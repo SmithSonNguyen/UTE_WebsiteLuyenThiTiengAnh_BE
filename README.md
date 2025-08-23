@@ -5,3 +5,9 @@
 ```ternimal
 npm install
 ```
+
+## Run
+
+```terminal
+npm run dev
+```
