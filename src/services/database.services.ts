@@ -1,31 +1,30 @@
-import { MongoClient, Db } from 'mongodb'
+import mongoose from 'mongoose'
 import dotenv from 'dotenv'
+
 dotenv.config()
 
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@webluyenthitienganh.yv7cgpx.mongodb.net/`
+const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@webluyenthitienganh.yv7cgpx.mongodb.net/webluyenthitienganh`
 
 class DatabaseService {
-  private client: MongoClient
-  private db: Db
+  private isConnected: boolean
 
   constructor() {
-    this.client = new MongoClient(uri)
-    this.db = this.client.db(process.env.DB_NAME)
+    this.isConnected = false
   }
 
   async connect() {
     try {
-      // Send a ping to confirm a successful connection
-      await this.db.command({ ping: 1 })
-      console.log('Pinged your deployment. You successfully connected to MongoDB!')
+      if (!this.isConnected) {
+        await mongoose.connect(uri)
+        this.isConnected = true
+        console.log('✅ Connected to MongoDB with Mongoose!')
+      }
     } catch (error) {
-      console.log('Error', error)
+      console.error('❌ MongoDB connection error:', error)
       throw error
     }
   }
 }
 
-// Tao Object tu class DatabaseService
 const databaseService = new DatabaseService()
-
 export default databaseService
