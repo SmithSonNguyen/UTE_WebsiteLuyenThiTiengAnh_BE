@@ -5,15 +5,18 @@ import { LoginReqBody } from '../models/requests/User.requests'
 import { ObjectId } from 'mongoose'
 import { USERS_MESSAGES } from '../constants/messages'
 import { IUser } from '../models/schemas/User.schema'
+import { config } from 'dotenv'
+config()
+
 export const registerController = async (req: Request, res: Response) => {
   // ...existing code...
   return res.json()
 }
 
 export const loginController = async (req: Request<ParamsDictionary, any, LoginReqBody>, res: Response) => {
-  const user = req.user as IUser | undefined //Lấy user từ req.user đã được gán ở middleware
+  const user = req.user as IUser //Lấy user từ req.user đã được gán ở middleware
   console.log(user)
-  if (!user) return res.status(400).json({ message: 'User not found' })
+  if (!user) return res.status(400).json({ message: USERS_MESSAGES.USER_NOT_FOUND })
   const user_id = user._id as ObjectId
   const result = await usersService.login({ user_id: user_id.toString() })
 
@@ -32,5 +35,19 @@ export const loginController = async (req: Request<ParamsDictionary, any, LoginR
     access_token,
     //refresh_token,
     user: user.profile
+  })
+}
+
+export const getMeController = async (req: Request, res: Response, next: NextFunction) => {
+  const user_id = '68ad52a25c1f295197daef3e'.toString() //thủ công tạm thời, sau này lấy từ token
+  // Lấy ra user_id từ cái thằng decode
+  // const { user_id } = req
+
+  // Gọi xuống Service để xử lý liên quan tới DB
+  const user = await usersService.getMe(user_id)
+
+  res.json({
+    message: USERS_MESSAGES.GET_ME_SUCCESS,
+    result: user
   })
 }

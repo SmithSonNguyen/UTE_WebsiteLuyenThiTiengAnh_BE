@@ -1,6 +1,7 @@
 import { signToken } from '~/utils/jwt'
 import { TokenType } from '~/constants/enum'
 import RefreshToken from '~/models/schemas/RefreshToken.schema'
+import databaseService from './database.services'
 
 class UsersService {
   private signAccessToken({ user_id }: { user_id: string }) {
@@ -48,6 +49,13 @@ class UsersService {
       access_token,
       refresh_token
     }
+  }
+  async getMe(user_id: string) {
+    const result = await RefreshToken.findOne({ user_id })
+    if (!result) {
+      throw new Error('User not found')
+    }
+    return result
   }
 }
 
