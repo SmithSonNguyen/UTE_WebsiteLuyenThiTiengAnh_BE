@@ -17,6 +17,7 @@ export const loginController = async (req: Request<ParamsDictionary, any, LoginR
   const user = req.user as IUser //Lấy user từ req.user đã được gán ở middleware
   console.log(user)
   if (!user) return res.status(400).json({ message: USERS_MESSAGES.USER_NOT_FOUND })
+
   const user_id = user._id as ObjectId
   const result = await usersService.login({ user_id: user_id.toString() })
 
