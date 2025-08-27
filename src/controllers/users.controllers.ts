@@ -12,8 +12,7 @@ export const registerController = async (req: Request, res: Response) => {
 
 export const loginController = async (req: Request<ParamsDictionary, any, LoginReqBody>, res: Response) => {
   const user = req.user as IUser | undefined //Lấy user từ req.user đã được gán ở middleware
-  console.log(user)
-  if (!user) return res.status(400).json({ message: 'User not found' })
+  if (!user) return res.status(400).json({ message: 'Thông tin tài khoản hoặc mật khẩu không chính xác' })
   const user_id = user._id as ObjectId
   const result = await usersService.login({ user_id: user_id.toString() })
 
