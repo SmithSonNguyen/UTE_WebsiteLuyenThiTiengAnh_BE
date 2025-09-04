@@ -2,6 +2,9 @@ import { signToken } from '~/utils/jwt'
 import { TokenType } from '~/constants/enum'
 import RefreshToken from '~/models/schemas/RefreshToken.schema'
 import databaseService from './database.services'
+import { RegisterReqBody } from '~/models/requests/User.requests'
+import User from '~/models/schemas/User.schema'
+import { hashPassword } from '~/utils/crypto'
 
 class UsersService {
   private signAccessToken({ user_id }: { user_id: string }) {
@@ -56,6 +59,31 @@ class UsersService {
       throw new Error('User not found')
     }
     return result
+  }
+
+  async register(payload: RegisterReqBody) {
+    const result = await User.create({
+      ...payload,
+      password: hashPassword(payload.password),
+      profile: {
+        lastname: payload.lastname,
+        firstname: payload.firstname,
+        email: payload.email,
+        birthday: new Date(payload.birthday)
+      }
+    })
+    const user_id = result.id.toString()
+    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({ user_id })
+    await RefreshToken.create({
+      user_id: result._id,
+      refreshtoken: refresh_token
+    })
+    return { access_token, refresh_token }
+  }
+
+  async checkEmailExist(email: string) {
+    const user = await User.findOne({ 'profile.email': email })
+    return !!user
   }
 }
 

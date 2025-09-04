@@ -7,27 +7,27 @@ import { EntityError, ErrorWithStatus } from '~/models/Errors'
 // can be reused by many routes
 export const validate = (validation: RunnableValidationChains<ValidationChain>) => {
   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    // sequential processing, stops running validations chain if one fails.
     await validation.run(req)
     const errors = validationResult(req)
-    // Không có lỗi thì next, tiếp tục request
+    //Khong co loi thi next
     if (errors.isEmpty()) {
       return next()
     }
-    const errorsOject = errors.mapped() //chuyển về mapped để gom lỗi lại, array thì không gom được
-
+    const errorObject = errors.mapped()
     const entityError = new EntityError({ errors: {} })
-    for (const key in errorsOject) {
-      //lặp những cái lỗi đã được mapped lại, ở đây key là confirm_password{}, email{}
-      const { msg } = errorsOject[key]
-      // Trả về lỗi không phải lỗi do validate
+    for (const key in errorObject) {
+      const { msg } = errorObject[key]
       if (msg instanceof ErrorWithStatus && msg.status !== HTTP_STATUS.UNPROCESSABLE_ENTITY) {
-        // msg là Obj có kiểu là ErrorWithStatus, và nếu nó thoả thì nó cx có status luôn, check coi có phải là 422 không
-        return next(msg) //dồn hết error vào next, để cho nó chạy vào error handler ở index.ts
+        return next(msg)
       }
-      entityError.errors[key] = errorsOject[key] //lưu lại lỗi vào entityError.errors, key là confirm_password{}, email{}
+      // Handle custom validation errors that might be strings
+      if (typeof msg === 'string') {
+        entityError.errors[key] = { msg, type: 'field' }
+      } else {
+        entityError.errors[key] = errorObject[key]
+      }
     }
 
-    next()
+    next(entityError)
   }
 }

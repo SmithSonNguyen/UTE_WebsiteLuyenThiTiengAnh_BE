@@ -4,6 +4,8 @@ import databaseService from './services/database.services'
 import dotenv from 'dotenv'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import HTTP_STATUS from './constants/httpStatus'
+import { EntityError, ErrorWithStatus } from './models/Errors'
 dotenv.config()
 
 const app = express()
@@ -23,6 +25,18 @@ app.use(express.json())
 app.use('/users', usersRouter)
 
 databaseService.connect()
+
+// Global error handler
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof ErrorWithStatus) {
+    if (err instanceof EntityError) {
+      return res.status(err.status).json({ message: err.message, errors: err.errors })
+    }
+    return res.status(err.status).json({ message: err.message })
+  }
+  return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Internal Server Error' })
+})
 
 //Khởi động server
 app.listen(port, () => {

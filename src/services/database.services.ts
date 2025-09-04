@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'
+import mongoose, { Collection } from 'mongoose'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -17,10 +17,10 @@ class DatabaseService {
       if (!this.isConnected) {
         await mongoose.connect(uri)
         this.isConnected = true
-        console.log('✅ Connected to MongoDB with Mongoose!')
+        console.log('Connected to MongoDB with Mongoose!')
       }
     } catch (error) {
-      console.error('❌ MongoDB connection error:', error)
+      console.error(' MongoDB connection error:', error)
       throw error
     }
   }
