@@ -1,16 +1,25 @@
 import { Request, Response } from 'express'
 import { NextFunction, ParamsDictionary } from 'express-serve-static-core'
 import usersService from '~/services/users.services'
-import { LoginReqBody } from '../models/requests/User.requests'
+import { LoginReqBody, RegisterReqBody } from '../models/requests/User.requests'
 import { ObjectId } from 'mongoose'
 import { USERS_MESSAGES } from '../constants/messages'
 import { IUser } from '../models/schemas/User.schema'
 import { config } from 'dotenv'
+import usersServices from '~/services/users.services'
 config()
 
-export const registerController = async (req: Request, res: Response) => {
-  // ...existing code...
-  return res.json()
+export const registerController = async (
+  req: Request<ParamsDictionary, any, RegisterReqBody>,
+  res: Response,
+  next: NextFunction
+) => {
+  const result = await usersServices.register(req.body)
+  return res.status(200).json({
+    message: USERS_MESSAGES.REGISTER_SUCCESS,
+    access_token: result.access_token,
+    refresh_token: result.refresh_token
+  })
 }
 
 export const loginController = async (req: Request<ParamsDictionary, any, LoginReqBody>, res: Response) => {

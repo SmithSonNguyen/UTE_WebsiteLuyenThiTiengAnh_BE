@@ -2,12 +2,11 @@ import mongoose, { Document, Schema, Model } from 'mongoose'
 
 // Định nghĩa interface cho profile
 interface UserProfile {
-  username: string
-  lastname?: string
-  firstname?: string
+  lastname: string
+  firstname: string
   email: string
   gender?: string
-  birthday?: Date | null
+  birthday: Date
   bio?: string
   avatar?: string
 }
@@ -33,12 +32,11 @@ const UserSchema: Schema<IUser> = new Schema(
     otp: { type: String, default: null },
     otpExpiresAt: { type: Date, default: null },
     profile: {
-      username: { type: String, required: true, unique: true },
-      lastname: { type: String, default: '' },
-      firstname: { type: String, default: '' },
+      lastname: { type: String, required: true },
+      firstname: { type: String, required: true },
       email: { type: String, required: true, unique: true },
       gender: { type: String, default: '' }, // Giới tính
-      birthday: { type: Date, default: null }, // Ngày sinh
+      birthday: { type: Date, required: true }, // Ngày sinh
       bio: { type: String, default: '' },
       avatar: { type: String, default: '' } // Đường dẫn ảnh đại diện
     }

@@ -11,3 +11,12 @@ export interface TokenPayload extends JwtPayload {
   user_id: string
   token_type: TokenType
 }
+
+export interface RegisterReqBody {
+  lastname: string
+  firstname: string
+  email: string
+  password: string
+  confirm_password: string
+  birthday: string
+}
