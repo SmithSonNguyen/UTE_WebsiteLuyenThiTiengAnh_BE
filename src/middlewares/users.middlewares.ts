@@ -3,6 +3,7 @@ import { USERS_MESSAGES } from '~/constants/messages'
 import databaseService from '~/services/database.services'
 import { validate } from '~/utils/validation'
 import User from '~/models/schemas/User.schema'
+import RefreshToken from '~/models/schemas/RefreshToken.schema'
 import { hashPassword } from '~/utils/crypto'
 import { config } from 'dotenv'
 import { ErrorWithStatus } from '~/models/Errors'
@@ -10,6 +11,7 @@ import HTTP_STATUS from '~/constants/httpStatus'
 import { verifyToken } from '~/utils/jwt'
 import { JsonWebTokenError } from 'jsonwebtoken'
 import usersService from '~/services/users.services'
+import { Request } from 'express'
 config()
 
 export const loginValidator = validate(
@@ -178,5 +180,58 @@ export const registerValidation = validate(
       }
     },
     ['body']
+  )
+)
+
+export const refreshTokenValidator = validate(
+  checkSchema(
+    {
+      refreshToken: {
+        custom: {
+          options: async (value, { req }) => {
+            // Kiểm tra chắc chắn cookies đã được parse
+            if (!req.cookies) {
+              throw new ErrorWithStatus({
+                message: 'Cookies chưa được parse, hãy chắc chắn đã dùng cookie-parser middleware!',
+                status: HTTP_STATUS.UNAUTHORIZED
+              })
+            }
+            const refreshTokenValue = req.cookies.refreshToken
+            if (!refreshTokenValue) {
+              throw new ErrorWithStatus({
+                message: USERS_MESSAGES.REFRESH_TOKEN_IS_REQUIRED,
+                status: HTTP_STATUS.UNAUTHORIZED
+              })
+            }
+            try {
+              const [decode_refresh_token, refresh_token] = await Promise.all([
+                verifyToken({
+                  token: refreshTokenValue,
+                  secretOrPublicKey: process.env.JWT_SECRET_REFRESH_TOKEN as string
+                }),
+                RefreshToken.findOne({ refreshtoken: refreshTokenValue })
+              ])
+              if (!refresh_token) {
+                throw new ErrorWithStatus({
+                  message: USERS_MESSAGES.USED_REFRESH_TOKEN_OR_NOT_EXIST,
+                  status: HTTP_STATUS.UNAUTHORIZED
+                })
+              }
+              req.decoded_refresh_token = decode_refresh_token
+            } catch (error) {
+              if (error instanceof JsonWebTokenError) {
+                throw new ErrorWithStatus({
+                  message: error.message,
+                  status: HTTP_STATUS.UNAUTHORIZED
+                })
+              }
+              throw error
+            }
+            return true
+          }
+        }
+      }
+    },
+    ['cookies']
   )
 )

@@ -20,3 +20,7 @@ export interface RegisterReqBody {
   confirm_password: string
   birthday: string
 }
+
+export interface RefreshTokenReqBody {
+  refresh_token: string
+}

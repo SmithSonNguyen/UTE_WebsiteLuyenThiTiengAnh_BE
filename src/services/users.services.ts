@@ -85,6 +85,24 @@ class UsersService {
     const user = await User.findOne({ 'profile.email': email })
     return !!user
   }
+
+  async refreshToken({ user_id, refresh_token }: { user_id: string; refresh_token: string }) {
+    // Ở đây sẽ tạo ra 2 token mới => Dùng Promise.all để chạy song song 2 hàm vì nó không liên quan đến nhau
+    // user chưa verify thì vẫn cho phép ngta lấy refresh token
+    const [new_access_token, new_refresh_token] = await Promise.all([
+      this.signAccessToken({ user_id }),
+      this.signRefreshToken({ user_id }),
+      RefreshToken.deleteOne({ refreshtoken: refresh_token }) //Xoá refresh token ngta gửi lên
+    ])
+
+    // Insert refresh token mới vào DB
+    await RefreshToken.insertOne(new RefreshToken({ user_id: user_id, refreshtoken: new_refresh_token }))
+
+    return {
+      access_token: new_access_token,
+      refresh_token: new_refresh_token
+    }
+  }
 }
 
 const usersService = new UsersService()
