@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import HTTP_STATUS from './constants/httpStatus'
 import { EntityError, ErrorWithStatus } from './models/Errors'
+import lessonsRouter from './routes/lessons.routes'
 dotenv.config()
 
 const app = express()
@@ -23,6 +24,7 @@ app.use(express.json())
 
 // middleware: nghĩa là phải chạy qua hàm use này trước, xong mới vô userRouter nếu user truy cập /users/...
 app.use('/users', usersRouter)
+app.use('/lessons', lessonsRouter)
 
 databaseService.connect()
 
