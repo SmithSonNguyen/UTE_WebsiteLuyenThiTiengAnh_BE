@@ -30,8 +30,8 @@ export const loginValidator = validate(
             }
 
             // So sánh password hash
-            //const hashedPassword = hashPassword(req.body.password)
-            if (user.password !== req.body.password) {
+            const hashedPassword = hashPassword(req.body.password)
+            if (user.password !== hashedPassword) {
               throw new Error(USERS_MESSAGES.EMAIL_OR_PASSWORD_IS_INCORRECT)
             }
 

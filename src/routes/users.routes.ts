@@ -5,9 +5,13 @@ import {
   registerValidation,
   refreshTokenValidator
 } from '~/middlewares/users.middlewares'
-import { getMeController, loginController, refreshTokenController } from '~/controllers/users.controllers'
+import {
+  getMeController,
+  loginController,
+  refreshTokenController,
+  registerController
+} from '~/controllers/users.controllers'
 import { wrapRequestHandler } from '~/utils/handlers'
-import { registerController } from '~/controllers/users.controllers'
 
 const usersRouter = Router()
 export default usersRouter
