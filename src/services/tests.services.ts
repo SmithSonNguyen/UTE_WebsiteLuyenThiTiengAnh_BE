@@ -1,0 +1,173 @@
+import Test from '~/models/schemas/Test.schema'
+import QuestionGroup from '~/models/schemas/QuestionGroup.schema'
+import Question from '~/models/schemas/Question.schema'
+import { Types } from 'mongoose'
+import { Section } from '~/models/types/Section.types'
+
+// Interface cho filter parameters
+interface TestFilterParams {
+  category?: string
+  year?: string
+  search?: string
+  difficulty?: string
+  page?: string
+  limit?: string
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}
+
+const testsService = {
+  getAllTests: async () => {
+    return await Test.find()
+  },
+
+  getFilteredTests: async (filterParams: TestFilterParams) => {
+    const {
+      category,
+      year,
+      search,
+      difficulty,
+      page = '1',
+      limit = '12',
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = filterParams
+
+    // Build filter object
+    const filter: Record<string, unknown> = {}
+
+    // Category filter
+    if (category && category !== 'tat-ca') {
+      filter.category = category
+    }
+
+    // Year filter
+    if (year) {
+      filter.year = parseInt(year)
+    }
+
+    // Difficulty filter
+    if (difficulty) {
+      filter.difficulty = difficulty
+    }
+
+    // Search filter
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { testId: { $regex: search, $options: 'i' } }
+      ]
+    }
+
+    // Pagination
+    const pageNum = parseInt(page)
+    const limitNum = parseInt(limit)
+    const skip = (pageNum - 1) * limitNum
+
+    // Sort object
+    const sort: Record<string, 1 | -1> = {}
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1
+
+    // Execute query
+    const [tests, total] = await Promise.all([
+      Test.find(filter).sort(sort).skip(skip).limit(limitNum).lean(),
+      Test.countDocuments(filter)
+    ])
+
+    // Get available filters for frontend
+    const [availableYears, availableCategories] = await Promise.all([Test.distinct('year'), Test.distinct('category')])
+
+    return {
+      tests,
+      total,
+      pagination: {
+        total,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum),
+        limit: limitNum
+      },
+      filters: {
+        availableYears: availableYears.sort((a: number, b: number) => b - a),
+        availableCategories: availableCategories.sort()
+      }
+    }
+  },
+
+  getAllQuestionsOptimized: async (testId: string): Promise<Section[]> => {
+    const sections = await Question.aggregate<Section>([
+      // 1. Lọc theo testId
+      { $match: { testId: new Types.ObjectId(testId) } },
+
+      // 2. Join sang question_groups
+      {
+        $lookup: {
+          from: 'questiongroups', // ⚠️ tên collection trong MongoDB (mặc định mongoose pluralize)
+          localField: 'questionGroupId',
+          foreignField: '_id',
+          as: 'group'
+        }
+      },
+      {
+        $addFields: {
+          group: { $arrayElemAt: ['$group', 0] }
+        }
+      },
+
+      // 3. Gom theo groupId (nếu có), còn không thì gom theo _id của chính nó
+      {
+        $group: {
+          _id: { $ifNull: ['$questionGroupId', '$_id'] },
+          type: {
+            $first: {
+              $cond: [{ $ifNull: ['$questionGroupId', false] }, 'group', 'individual']
+            }
+          },
+          group: { $first: '$group' },
+          questions: {
+            $push: {
+              _id: '$_id',
+              questionNumber: '$questionNumber',
+              part: '$part',
+              questionText: '$questionText',
+              questionImage: '$questionImage',
+              audioUrl: '$audioUrl',
+              options: '$options',
+              correctAnswer: '$correctAnswer',
+              blankPosition: '$blankPosition'
+            }
+          }
+        }
+      },
+
+      // 4. Sắp xếp câu hỏi trong group theo questionNumber
+      {
+        $addFields: {
+          questions: {
+            $sortArray: { input: '$questions', sortBy: { questionNumber: 1 } }
+          }
+        }
+      },
+
+      // 5. Tạo sortKey để sắp xếp section
+      {
+        $addFields: {
+          sortKey: {
+            $concat: [
+              { $toString: { $min: '$questions.part' } },
+              '.',
+              { $toString: { $ifNull: ['$group.groupNumber', 0] } },
+              '.',
+              { $toString: { $min: '$questions.questionNumber' } }
+            ]
+          }
+        }
+      },
+      { $sort: { sortKey: 1 } }
+    ])
+
+    return sections
+  }
+}
+
+export default testsService
