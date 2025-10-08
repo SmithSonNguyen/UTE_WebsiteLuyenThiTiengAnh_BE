@@ -7,6 +7,7 @@ import cors from 'cors'
 import HTTP_STATUS from './constants/httpStatus'
 import { EntityError, ErrorWithStatus } from './models/Errors'
 import lessonsRouter from './routes/lessons.routes'
+import freeentrytestRouter from './routes/freeentrytest.routes'
 import testsRouter from './routes/tests.routes'
 dotenv.config()
 
@@ -26,6 +27,7 @@ app.use(express.json())
 // middleware: nghĩa là phải chạy qua hàm use này trước, xong mới vô userRouter nếu user truy cập /users/...
 app.use('/users', usersRouter)
 app.use('/lessons', lessonsRouter)
+app.use('/toeic-home', freeentrytestRouter)
 app.use('/tests', testsRouter)
 
 databaseService.connect()
