@@ -24,3 +24,11 @@ export interface RegisterReqBody {
 export interface RefreshTokenReqBody {
   refresh_token: string
 }
+
+export interface UpdateProfileReqBody {
+  lastname?: string
+  firstname?: string
+  birthday?: string
+  bio?: string
+  avatar?: string
+}

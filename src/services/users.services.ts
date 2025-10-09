@@ -2,9 +2,10 @@ import { signToken } from '~/utils/jwt'
 import { TokenType } from '~/constants/enum'
 import RefreshToken from '~/models/schemas/RefreshToken.schema'
 import databaseService from './database.services'
-import { RegisterReqBody } from '~/models/requests/User.requests'
+import { RegisterReqBody, UpdateProfileReqBody } from '~/models/requests/User.requests'
 import User from '~/models/schemas/User.schema'
 import { hashPassword } from '~/utils/crypto'
+import crypto from 'crypto'
 
 class UsersService {
   private signAccessToken({ user_id }: { user_id: string }) {
@@ -102,6 +103,55 @@ class UsersService {
       access_token: new_access_token,
       refresh_token: new_refresh_token
     }
+  }
+
+  async generateUploadSignature() {
+    const cloudname = process.env.CLOUDINARY_CLOUD_NAME
+    const apikey = process.env.CLOUDINARY_API_KEY
+    const apisecret = process.env.CLOUDINARY_API_SECRET
+
+    console.log('Cloudinary config:', { cloudname, apikey, apisecret: apisecret ? 'EXISTS' : 'MISSING' })
+
+    if (!cloudname || !apikey || !apisecret) {
+      throw new Error('Cloudinary configuration is missing')
+    }
+
+    const timestamp = Math.round(new Date().getTime() / 1000)
+    const paramsToSign = `timestamp=${timestamp}`
+
+    const signature = crypto
+      .createHash('sha1')
+      .update(paramsToSign + apisecret)
+      .digest('hex')
+
+    const result = {
+      signature,
+      timestamp,
+      cloudname,
+      apikey
+    }
+
+    console.log('Generated signature result:', result)
+    return result
+  }
+
+  async updateProfile(user_id: string, payload: UpdateProfileReqBody) {
+    const updateData: any = {}
+
+    // Cập nhật thông tin profile
+    if (payload.lastname !== undefined) updateData['profile.lastname'] = payload.lastname
+    if (payload.firstname !== undefined) updateData['profile.firstname'] = payload.firstname
+    if (payload.birthday !== undefined) updateData['profile.birthday'] = new Date(payload.birthday)
+    if (payload.bio !== undefined) updateData['profile.bio'] = payload.bio
+    if (payload.avatar !== undefined) updateData['profile.avatar'] = payload.avatar
+
+    const updatedUser = await User.findByIdAndUpdate(user_id, { $set: updateData }, { new: true, select: 'profile' })
+
+    if (!updatedUser) {
+      throw new Error('User not found')
+    }
+
+    return updatedUser.profile
   }
 }
 

@@ -235,3 +235,59 @@ export const refreshTokenValidator = validate(
     ['cookies']
   )
 )
+
+export const updateProfileValidator = validate(
+  checkSchema({
+    lastname: {
+      optional: true,
+      isString: {
+        errorMessage: USERS_MESSAGES.NAME_MUST_BE_STRING
+      },
+      trim: true,
+      isLength: {
+        options: { min: 1, max: 100 },
+        errorMessage: USERS_MESSAGES.NAME_LENGTH_MUST_BE_1_TO_100
+      }
+    },
+    firstname: {
+      optional: true,
+      isString: {
+        errorMessage: USERS_MESSAGES.NAME_MUST_BE_STRING
+      },
+      trim: true,
+      isLength: {
+        options: { min: 1, max: 100 },
+        errorMessage: USERS_MESSAGES.NAME_LENGTH_MUST_BE_1_TO_100
+      }
+    },
+    birthday: {
+      optional: true,
+      isISO8601: {
+        options: { strict: true, strictSeparator: true },
+        errorMessage: USERS_MESSAGES.DATE_OF_BIRTH_MUST_BE_ISO8601
+      }
+    },
+    bio: {
+      optional: true,
+      isString: {
+        errorMessage: USERS_MESSAGES.BIO_MUST_BE_STRING
+      },
+      trim: true,
+      isLength: {
+        options: { min: 1, max: 200 },
+        errorMessage: USERS_MESSAGES.BIO_LENGTH
+      }
+    },
+    avatar: {
+      optional: true,
+      isString: {
+        errorMessage: USERS_MESSAGES.IMAGE_URL_MUST_BE_STRING
+      },
+      trim: true,
+      isLength: {
+        options: { min: 1, max: 400 },
+        errorMessage: USERS_MESSAGES.IMAGE_URL_LENGTH
+      }
+    }
+  })
+)

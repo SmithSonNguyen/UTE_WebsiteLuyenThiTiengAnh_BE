@@ -1,7 +1,13 @@
 import { Request, Response } from 'express'
 import { NextFunction, ParamsDictionary } from 'express-serve-static-core'
 import usersService from '~/services/users.services'
-import { LoginReqBody, RegisterReqBody, RefreshTokenReqBody, TokenPayload } from '../models/requests/User.requests'
+import {
+  LoginReqBody,
+  RegisterReqBody,
+  RefreshTokenReqBody,
+  TokenPayload,
+  UpdateProfileReqBody
+} from '../models/requests/User.requests'
 import { ObjectId } from 'mongoose'
 import { USERS_MESSAGES } from '../constants/messages'
 import { IUser } from '../models/schemas/User.schema'
@@ -96,4 +102,46 @@ export const refreshTokenController = async (
     access_token: result.access_token,
     refresh_token: result.refresh_token
   })
+}
+
+export const getUploadSignatureController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    //console.log('Getting upload signature...')
+    const signatureData = await usersService.generateUploadSignature()
+    //console.log('Signature data received:', signatureData)
+
+    const response = {
+      message: 'Get upload signature success',
+      signature: signatureData.signature,
+      timestamp: signatureData.timestamp,
+      cloudname: signatureData.cloudname,
+      apikey: signatureData.apikey
+    }
+
+    //console.log('Sending response:', response)
+    res.json(response)
+  } catch (error) {
+    console.error('Error in getUploadSignatureController:', error)
+    next(error)
+  }
+}
+
+export const updateProfileController = async (
+  req: Request<ParamsDictionary, any, UpdateProfileReqBody>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // TODO: Lấy user_id từ access token thay vì hardcode
+    const user_id = '68ad52a25c1f295197daef3e' // Tạm thời hardcode
+
+    const updatedUser = await usersService.updateProfile(user_id, req.body)
+
+    res.json({
+      message: USERS_MESSAGES.UPDATE_ME_SUCCESS,
+      user: updatedUser
+    })
+  } catch (error) {
+    next(error)
+  }
 }
