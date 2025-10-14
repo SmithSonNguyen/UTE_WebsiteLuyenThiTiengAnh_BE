@@ -64,9 +64,8 @@ export const loginController = async (
 }
 
 export const getMeController = async (req: Request, res: Response, next: NextFunction) => {
-  const user_id = '68ad52a25c1f295197daef3e'.toString() //thủ công tạm thời, sau này lấy từ token
-  // Lấy ra user_id từ cái thằng decode
-  // const { user_id } = req
+  // Lấy user_id từ access token đã được decode
+  const { user_id } = req.decoded_authorization as TokenPayload
 
   // Gọi xuống Service để xử lý liên quan tới DB
   const user = await usersService.getMe(user_id)
@@ -106,9 +105,11 @@ export const refreshTokenController = async (
 
 export const getUploadSignatureController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    //console.log('Getting upload signature...')
+    // Có thể lấy user_id để log hoặc kiểm tra quyền nếu cần
+    const { user_id } = req.decoded_authorization as TokenPayload
+    //console.log('User requesting upload signature:', user_id)
+
     const signatureData = await usersService.generateUploadSignature()
-    //console.log('Signature data received:', signatureData)
 
     const response = {
       message: 'Get upload signature success',
@@ -118,7 +119,6 @@ export const getUploadSignatureController = async (req: Request, res: Response, 
       apikey: signatureData.apikey
     }
 
-    //console.log('Sending response:', response)
     res.json(response)
   } catch (error) {
     console.error('Error in getUploadSignatureController:', error)
@@ -132,14 +132,32 @@ export const updateProfileController = async (
   next: NextFunction
 ) => {
   try {
-    // TODO: Lấy user_id từ access token thay vì hardcode
-    const user_id = '68ad52a25c1f295197daef3e' // Tạm thời hardcode
+    // Lấy user_id từ access token đã được decode
+    const { user_id } = req.decoded_authorization as TokenPayload
 
     const updatedUser = await usersService.updateProfile(user_id, req.body)
 
     res.json({
       message: USERS_MESSAGES.UPDATE_ME_SUCCESS,
       user: updatedUser
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const logoutController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Lấy user_id từ access token đã được decode
+    const { user_id } = req.decoded_authorization as TokenPayload
+
+    await usersService.logout(user_id)
+
+    // Xóa refresh token cookie
+    res.clearCookie('refreshToken')
+
+    res.json({
+      message: USERS_MESSAGES.LOGOUT_SUCCESS
     })
   } catch (error) {
     next(error)

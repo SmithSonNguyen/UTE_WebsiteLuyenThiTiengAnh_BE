@@ -29,6 +29,6 @@ export interface UpdateProfileReqBody {
   lastname?: string
   firstname?: string
   birthday?: string
-  bio?: string
+  phone?: string
   avatar?: string
 }

@@ -9,6 +9,8 @@ import { EntityError, ErrorWithStatus } from './models/Errors'
 import lessonsRouter from './routes/lessons.routes'
 import freeentrytestRouter from './routes/freeentrytest.routes'
 import testsRouter from './routes/tests.routes'
+import coursesRouter from './routes/courses.routes'
+import reviewsRouter from './routes/reviews.routes'
 dotenv.config()
 
 const app = express()
@@ -29,6 +31,8 @@ app.use('/users', usersRouter)
 app.use('/lessons', lessonsRouter)
 app.use('/toeic-home', freeentrytestRouter)
 app.use('/tests', testsRouter)
+app.use('/courses', coursesRouter)
+app.use('/reviews', reviewsRouter)
 
 databaseService.connect()
 

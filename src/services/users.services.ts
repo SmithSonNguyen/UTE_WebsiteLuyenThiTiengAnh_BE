@@ -6,6 +6,7 @@ import { RegisterReqBody, UpdateProfileReqBody } from '~/models/requests/User.re
 import User from '~/models/schemas/User.schema'
 import { hashPassword } from '~/utils/crypto'
 import crypto from 'crypto'
+import mongoose from 'mongoose'
 
 class UsersService {
   private signAccessToken({ user_id }: { user_id: string }) {
@@ -44,7 +45,7 @@ class UsersService {
 
     // Upsert: nếu user_id tồn tại thì update refreshtoken, nếu không có thì tạo mới
     await RefreshToken.findOneAndUpdate(
-      { user_id }, // điều kiện tìm kiếm
+      { user_id: new mongoose.Types.ObjectId(user_id) }, // điều kiện tìm kiếm
       { refreshtoken: refresh_token }, // giá trị update
       { upsert: true, new: true } // upsert = tạo mới nếu không có, new = trả về doc mới
     )
@@ -55,11 +56,11 @@ class UsersService {
     }
   }
   async getMe(user_id: string) {
-    const result = await RefreshToken.findOne({ user_id })
-    if (!result) {
+    const user = await User.findById(user_id, 'profile')
+    if (!user) {
       throw new Error('User not found')
     }
-    return result
+    return user.profile
   }
 
   async register(payload: RegisterReqBody) {
@@ -97,7 +98,10 @@ class UsersService {
     ])
 
     // Insert refresh token mới vào DB
-    await RefreshToken.insertOne(new RefreshToken({ user_id: user_id, refreshtoken: new_refresh_token }))
+    await RefreshToken.create({
+      user_id: new mongoose.Types.ObjectId(user_id),
+      refreshtoken: new_refresh_token
+    })
 
     return {
       access_token: new_access_token,
@@ -110,7 +114,7 @@ class UsersService {
     const apikey = process.env.CLOUDINARY_API_KEY
     const apisecret = process.env.CLOUDINARY_API_SECRET
 
-    console.log('Cloudinary config:', { cloudname, apikey, apisecret: apisecret ? 'EXISTS' : 'MISSING' })
+    //console.log('Cloudinary config:', { cloudname, apikey, apisecret: apisecret ? 'EXISTS' : 'MISSING' })
 
     if (!cloudname || !apikey || !apisecret) {
       throw new Error('Cloudinary configuration is missing')
@@ -131,7 +135,7 @@ class UsersService {
       apikey
     }
 
-    console.log('Generated signature result:', result)
+    //console.log('Generated signature result:', result)
     return result
   }
 
@@ -142,7 +146,10 @@ class UsersService {
     if (payload.lastname !== undefined) updateData['profile.lastname'] = payload.lastname
     if (payload.firstname !== undefined) updateData['profile.firstname'] = payload.firstname
     if (payload.birthday !== undefined) updateData['profile.birthday'] = new Date(payload.birthday)
-    if (payload.bio !== undefined) updateData['profile.bio'] = payload.bio
+    if (payload.phone !== undefined) {
+      // Cho phép phone trống hoặc có giá trị
+      updateData['profile.phone'] = payload.phone.trim() === '' ? '' : payload.phone
+    }
     if (payload.avatar !== undefined) updateData['profile.avatar'] = payload.avatar
 
     const updatedUser = await User.findByIdAndUpdate(user_id, { $set: updateData }, { new: true, select: 'profile' })
@@ -152,6 +159,23 @@ class UsersService {
     }
 
     return updatedUser.profile
+  }
+
+  async logout(user_id: string) {
+    // Debug: kiểm tra số lượng refresh token trước khi xóa
+    // const countBefore = await RefreshToken.countDocuments({
+    //   user_id: new mongoose.Types.ObjectId(user_id)
+    // })
+    //console.log(`User ${user_id} has ${countBefore} refresh tokens before logout`)
+
+    // Xóa tất cả refresh token của user này
+    // Chuyển string thành ObjectId để match với schema
+    const result = await RefreshToken.deleteMany({
+      user_id: new mongoose.Types.ObjectId(user_id)
+    })
+
+    //console.log(`Deleted ${result.deletedCount} refresh tokens for user ${user_id}`)
+    return result
   }
 }
 

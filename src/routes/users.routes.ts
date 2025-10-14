@@ -12,7 +12,8 @@ import {
   refreshTokenController,
   registerController,
   getUploadSignatureController,
-  updateProfileController
+  updateProfileController,
+  logoutController
 } from '~/controllers/users.controllers'
 import { wrapRequestHandler } from '~/utils/handlers'
 
@@ -29,9 +30,17 @@ usersRouter.post('/login', loginValidator, wrapRequestHandler(loginController))
  * Method: GET
  * Headers: { Authorization: Bearer <access_token> }
  */
-usersRouter.get('/me', wrapRequestHandler(getMeController)) // Đang thiếu accessTokenValidator
+usersRouter.get('/me', accessTokenValidator, wrapRequestHandler(getMeController))
 
 usersRouter.post('/refresh-token', refreshTokenValidator, wrapRequestHandler(refreshTokenController))
+
+/**
+ * Description: Logout
+ * Path: /logout
+ * Method: POST
+ * Headers: { Authorization: Bearer <access_token> }
+ */
+usersRouter.post('/logout', accessTokenValidator, wrapRequestHandler(logoutController))
 
 /**
  * Description: Get upload signature for Cloudinary
@@ -39,7 +48,7 @@ usersRouter.post('/refresh-token', refreshTokenValidator, wrapRequestHandler(ref
  * Method: GET
  * Headers: { Authorization: Bearer <access_token> }
  */
-usersRouter.get('/upload-signature', wrapRequestHandler(getUploadSignatureController))
+usersRouter.get('/upload-signature', accessTokenValidator, wrapRequestHandler(getUploadSignatureController))
 
 /**
  * Description: Update user profile
@@ -48,4 +57,9 @@ usersRouter.get('/upload-signature', wrapRequestHandler(getUploadSignatureContro
  * Headers: { Authorization: Bearer <access_token> }
  * Body: { lastname?, firstname?, birthday?, bio?, avatar? }
  */
-usersRouter.put('/update-profile', updateProfileValidator, wrapRequestHandler(updateProfileController))
+usersRouter.put(
+  '/update-profile',
+  accessTokenValidator,
+  updateProfileValidator,
+  wrapRequestHandler(updateProfileController)
+)

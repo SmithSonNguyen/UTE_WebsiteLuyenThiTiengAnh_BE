@@ -63,5 +63,8 @@ export const USERS_MESSAGES = {
   CHANGE_PASSWORD_SUCCESS: 'Change Password Success',
   GMAIL_NOT_VERIFIED: 'Gmail not verified',
   UPLOAD_SUCCESS: 'Upload success',
-  REFRESH_TOKEN_SUCCESS: 'Refresh token success'
+  REFRESH_TOKEN_SUCCESS: 'Refresh token success',
+  PHONE_MUST_BE_STRING: 'Phone must be string',
+  PHONE_LENGTH: 'Phone length must be from 1 to 15',
+  PHONE_IS_INVALID: 'Phone is invalid'
 } as const //fix cứng, khong cho sửa đổi, không cho phép thay đổi giá trị của object này

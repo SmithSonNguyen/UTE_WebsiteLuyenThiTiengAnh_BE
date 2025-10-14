@@ -83,8 +83,10 @@ export const accessTokenValidator = validate(
                 token: access_token,
                 secretOrPublicKey: process.env.JWT_SECRET_ACCESS_TOKEN as string
               })
+              //console.log('AccessTokenValidator - Token decoded successfully for user:', decoded_authorization.user_id)
               req.decoded_authorization = decoded_authorization
             } catch (error) {
+              //console.error('AccessTokenValidator - Token verification failed:', (error as Error).message)
               throw new ErrorWithStatus({
                 message: (error as JsonWebTokenError).message,
                 status: HTTP_STATUS.UNAUTHORIZED
@@ -267,15 +269,22 @@ export const updateProfileValidator = validate(
         errorMessage: USERS_MESSAGES.DATE_OF_BIRTH_MUST_BE_ISO8601
       }
     },
-    bio: {
+    phone: {
       optional: true,
       isString: {
-        errorMessage: USERS_MESSAGES.BIO_MUST_BE_STRING
+        errorMessage: USERS_MESSAGES.PHONE_MUST_BE_STRING
       },
-      trim: true,
-      isLength: {
-        options: { min: 1, max: 200 },
-        errorMessage: USERS_MESSAGES.BIO_LENGTH
+      custom: {
+        options: (value) => {
+          // Cho phép trống hoặc phải đúng format
+          if (!value || value.trim() === '') {
+            return true
+          }
+          if (!/^\+?[0-9]\d{1,14}$/.test(value)) {
+            throw new Error(USERS_MESSAGES.PHONE_IS_INVALID)
+          }
+          return true
+        }
       }
     },
     avatar: {
