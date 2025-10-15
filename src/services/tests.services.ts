@@ -1,5 +1,4 @@
 import Test from '~/models/schemas/Test.schema'
-import QuestionGroup from '~/models/schemas/QuestionGroup.schema'
 import Question from '~/models/schemas/Question.schema'
 import { Types } from 'mongoose'
 import { Section } from '~/models/types/Section.types'
@@ -97,73 +96,40 @@ const testsService = {
   getAllQuestionsOptimized: async (testId: string): Promise<Section[]> => {
     const sections = await Question.aggregate<Section>([
       // 1. Lọc theo testId
-      { $match: { testId: new Types.ObjectId(testId) } },
-
-      // 2. Join sang question_groups
       {
-        $lookup: {
-          from: 'questiongroups', // ⚠️ tên collection trong MongoDB (mặc định mongoose pluralize)
-          localField: 'questionGroupId',
-          foreignField: '_id',
-          as: 'group'
-        }
+        $match: { testId }
       },
+
+      // 2. Sắp xếp các câu hỏi con theo number
       {
         $addFields: {
-          group: { $arrayElemAt: ['$group', 0] }
-        }
-      },
-
-      // 3. Gom theo groupId (nếu có), còn không thì gom theo _id của chính nó
-      {
-        $group: {
-          _id: { $ifNull: ['$questionGroupId', '$_id'] },
-          type: {
-            $first: {
-              $cond: [{ $ifNull: ['$questionGroupId', false] }, 'group', 'individual']
-            }
-          },
-          group: { $first: '$group' },
           questions: {
-            $push: {
-              _id: '$_id',
-              questionNumber: '$questionNumber',
-              part: '$part',
-              questionText: '$questionText',
-              questionImage: '$questionImage',
-              audioUrl: '$audioUrl',
-              options: '$options',
-              correctAnswer: '$correctAnswer',
-              blankPosition: '$blankPosition'
+            $sortArray: {
+              input: '$questions',
+              sortBy: { number: 1 }
             }
           }
         }
       },
 
-      // 4. Sắp xếp câu hỏi trong group theo questionNumber
-      {
-        $addFields: {
-          questions: {
-            $sortArray: { input: '$questions', sortBy: { questionNumber: 1 } }
-          }
-        }
-      },
-
-      // 5. Tạo sortKey để sắp xếp section
+      // 3. Tạo sortKey để sắp xếp các section
       {
         $addFields: {
           sortKey: {
-            $concat: [
-              { $toString: { $min: '$questions.part' } },
-              '.',
-              { $toString: { $ifNull: ['$group.groupNumber', 0] } },
-              '.',
-              { $toString: { $min: '$questions.questionNumber' } }
-            ]
+            $concat: [{ $toString: '$part' }, '.', { $toString: { $min: '$questions.number' } }]
           }
         }
       },
-      { $sort: { sortKey: 1 } }
+
+      // 4. Sắp xếp theo sortKey
+      {
+        $sort: { sortKey: 1 }
+      },
+
+      // 5. Loại bỏ trường sortKey (nếu không cần trong output)
+      {
+        $unset: ['sortKey', 'questions.answer']
+      }
     ])
 
     return sections
