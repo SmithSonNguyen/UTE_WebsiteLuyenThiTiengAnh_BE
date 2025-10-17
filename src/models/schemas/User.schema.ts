@@ -7,6 +7,7 @@ interface UserProfile {
   email: string
   gender?: string
   birthday: Date
+  phone: string
   bio?: string
   avatar?: string
 }
@@ -43,6 +44,7 @@ const UserSchema: Schema<IUser> = new Schema(
       email: { type: String, required: true, unique: true },
       gender: { type: String, default: '' },
       birthday: { type: Date, required: true },
+      phone: { type: String, default: '', match: [/^\+?[0-9]\d{1,14}$/, 'is not a valid phone number'] },
       bio: { type: String, default: '' },
       avatar: { type: String, default: '' }
     },

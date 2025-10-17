@@ -63,5 +63,21 @@ export const USERS_MESSAGES = {
   CHANGE_PASSWORD_SUCCESS: 'Change Password Success',
   GMAIL_NOT_VERIFIED: 'Gmail not verified',
   UPLOAD_SUCCESS: 'Upload success',
-  REFRESH_TOKEN_SUCCESS: 'Refresh token success'
+  REFRESH_TOKEN_SUCCESS: 'Refresh token success',
+  PHONE_MUST_BE_STRING: 'Phone must be string',
+  PHONE_LENGTH: 'Phone length must be from 1 to 15',
+  PHONE_IS_INVALID: 'Phone is invalid'
 } as const //fix cứng, khong cho sửa đổi, không cho phép thay đổi giá trị của object này
+
+export const CLASSES_MESSAGES = {
+  CREATE_CLASS_SUCCESS: 'Create class successfully',
+  GET_CLASSES_SUCCESS: 'Get classes successfully',
+  GET_CLASS_DETAIL_SUCCESS: 'Get class detail successfully',
+  UPDATE_CLASS_SUCCESS: 'Update class successfully',
+  DELETE_CLASS_SUCCESS: 'Delete class successfully',
+  ENROLL_CLASS_SUCCESS: 'Enroll class successfully',
+  CLASS_NOT_FOUND: 'Class not found',
+  CLASS_FULL: 'Class is full',
+  INVALID_CLASS_CODE: 'Invalid class code',
+  CLASS_CODE_ALREADY_EXISTS: 'Class code already exists'
+} as const

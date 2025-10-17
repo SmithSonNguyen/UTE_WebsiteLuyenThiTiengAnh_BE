@@ -1,7 +1,13 @@
 import { Request, Response } from 'express'
 import { NextFunction, ParamsDictionary } from 'express-serve-static-core'
 import usersService from '~/services/users.services'
-import { LoginReqBody, RegisterReqBody, RefreshTokenReqBody, TokenPayload } from '../models/requests/User.requests'
+import {
+  LoginReqBody,
+  RegisterReqBody,
+  RefreshTokenReqBody,
+  TokenPayload,
+  UpdateProfileReqBody
+} from '../models/requests/User.requests'
 import { ObjectId } from 'mongoose'
 import { USERS_MESSAGES } from '../constants/messages'
 import { IUser } from '../models/schemas/User.schema'
@@ -58,9 +64,8 @@ export const loginController = async (
 }
 
 export const getMeController = async (req: Request, res: Response, next: NextFunction) => {
-  const user_id = '68ad52a25c1f295197daef3e'.toString() //thủ công tạm thời, sau này lấy từ token
-  // Lấy ra user_id từ cái thằng decode
-  // const { user_id } = req
+  // Lấy user_id từ access token đã được decode
+  const { user_id } = req.decoded_authorization as TokenPayload
 
   // Gọi xuống Service để xử lý liên quan tới DB
   const user = await usersService.getMe(user_id)
@@ -96,4 +101,65 @@ export const refreshTokenController = async (
     access_token: result.access_token,
     refresh_token: result.refresh_token
   })
+}
+
+export const getUploadSignatureController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Có thể lấy user_id để log hoặc kiểm tra quyền nếu cần
+    const { user_id } = req.decoded_authorization as TokenPayload
+    //console.log('User requesting upload signature:', user_id)
+
+    const signatureData = await usersService.generateUploadSignature()
+
+    const response = {
+      message: 'Get upload signature success',
+      signature: signatureData.signature,
+      timestamp: signatureData.timestamp,
+      cloudname: signatureData.cloudname,
+      apikey: signatureData.apikey
+    }
+
+    res.json(response)
+  } catch (error) {
+    console.error('Error in getUploadSignatureController:', error)
+    next(error)
+  }
+}
+
+export const updateProfileController = async (
+  req: Request<ParamsDictionary, any, UpdateProfileReqBody>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Lấy user_id từ access token đã được decode
+    const { user_id } = req.decoded_authorization as TokenPayload
+
+    const updatedUser = await usersService.updateProfile(user_id, req.body)
+
+    res.json({
+      message: USERS_MESSAGES.UPDATE_ME_SUCCESS,
+      user: updatedUser
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const logoutController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Lấy user_id từ access token đã được decode
+    const { user_id } = req.decoded_authorization as TokenPayload
+
+    await usersService.logout(user_id)
+
+    // Xóa refresh token cookie
+    res.clearCookie('refreshToken')
+
+    res.json({
+      message: USERS_MESSAGES.LOGOUT_SUCCESS
+    })
+  } catch (error) {
+    next(error)
+  }
 }
