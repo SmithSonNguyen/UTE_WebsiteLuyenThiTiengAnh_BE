@@ -9,11 +9,12 @@ import crypto from 'crypto'
 import mongoose from 'mongoose'
 
 class UsersService {
-  private signAccessToken({ user_id }: { user_id: string }) {
+  private signAccessToken({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
     return signToken({
       payload: {
         user_id,
-        token_type: TokenType.AccessToken
+        token_type: TokenType.AccessToken,
+        role
       },
       privateKey: process.env.JWT_SECRET_ACCESS_TOKEN as string,
       options: {
@@ -35,13 +36,13 @@ class UsersService {
     })
   }
 
-  private signAccessAndRefreshToken({ user_id }: { user_id: string }) {
+  private signAccessAndRefreshToken({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
     //do thấy medthod này được lặp lại nhiều nên tạo thành 1 method riêng
-    return Promise.all([this.signAccessToken({ user_id }), this.signRefreshToken({ user_id })])
+    return Promise.all([this.signAccessToken({ user_id }, { role }), this.signRefreshToken({ user_id })])
   }
 
-  async login({ user_id }: { user_id: string }) {
-    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({ user_id })
+  async login({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
+    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({ user_id }, { role })
 
     // Upsert: nếu user_id tồn tại thì update refreshtoken, nếu không có thì tạo mới
     await RefreshToken.findOneAndUpdate(

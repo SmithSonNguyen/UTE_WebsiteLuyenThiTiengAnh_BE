@@ -51,7 +51,7 @@ const UserSchema: Schema<IUser> = new Schema(
 
     role: {
       type: String,
-      enum: ['guest', 'registered', 'paid', 'free'],
+      enum: ['guest', 'instructor', 'admin'],
       default: 'guest'
     },
 

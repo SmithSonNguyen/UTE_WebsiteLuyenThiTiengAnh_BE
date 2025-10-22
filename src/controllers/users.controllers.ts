@@ -40,7 +40,8 @@ export const loginController = async (
     }
 
     const user_id = user._id as ObjectId
-    const result = await usersService.login({ user_id: user_id.toString() })
+    const role = user.role
+    const result = await usersService.login({ user_id: user_id.toString() }, { role })
 
     const access_token = result.access_token
     const refresh_token = result.refresh_token

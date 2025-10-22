@@ -9,6 +9,7 @@ export interface LoginReqBody {
 
 export interface TokenPayload extends JwtPayload {
   user_id: string
+  role?: string
   token_type: TokenType
 }
 

@@ -9,7 +9,6 @@ export interface IEnrollment extends Document {
   progress: {
     sessionsAttended: number
     totalSessions: number
-    completionPercentage: number
   }
   paymentStatus: 'pending' | 'paid' | 'refunded'
   paymentInfo?: {
@@ -34,13 +33,7 @@ const enrollmentSchema: Schema<IEnrollment> = new Schema(
     },
     progress: {
       sessionsAttended: { type: Number, default: 0, min: 0 },
-      totalSessions: { type: Number, required: true, min: 1 },
-      completionPercentage: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100
-      }
+      totalSessions: { type: Number, required: true, min: 1 }
     },
     paymentStatus: {
       type: String,

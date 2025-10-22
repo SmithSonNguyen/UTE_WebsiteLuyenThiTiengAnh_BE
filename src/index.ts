@@ -12,6 +12,7 @@ import testsRouter from './routes/tests.routes'
 import coursesRouter from './routes/courses.routes'
 import reviewsRouter from './routes/reviews.routes'
 import classesRouter from './routes/classes.routes'
+import enrollmentsRouter from './routes/enrollments.routes'
 dotenv.config()
 
 const app = express()
@@ -35,6 +36,7 @@ app.use('/tests', testsRouter)
 app.use('/courses', coursesRouter)
 app.use('/reviews', reviewsRouter)
 app.use('/classes', classesRouter)
+app.use('/enrollments', enrollmentsRouter)
 
 databaseService.connect()
 
