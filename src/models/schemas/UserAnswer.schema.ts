@@ -13,6 +13,10 @@ export interface IUserAnswer extends Document {
   userId: mongoose.Types.ObjectId
   testId: string
   answers: IUserAnswerItem[]
+  // total mark/score assigned after frontend grading
+  mark?: number
+  // number of correct answers the user got
+  rightAnswerNumber?: number
   createdAt: Date
   updatedAt: Date
 }
@@ -34,8 +38,7 @@ const UserAnswerSchema = new Schema<IUserAnswer>(
       required: true
     },
     testId: {
-      type: String,
-      required: true
+      type: String
     },
     answers: {
       type: [UserAnswerItemSchema],
@@ -44,9 +47,23 @@ const UserAnswerSchema = new Schema<IUserAnswer>(
         validator: (arr: IUserAnswerItem[]) => Array.isArray(arr) && arr.length > 0,
         message: 'answers must be a non-empty array'
       }
+    },
+    // optional mark stored after frontend grading (number)
+    mark: {
+      type: Number,
+      required: false,
+      default: null,
+      min: 0
+    },
+    // optional number of correct answers
+    rightAnswerNumber: {
+      type: Number,
+      required: false,
+      default: null,
+      min: 0
     }
   },
-  { timestamps: true, collection: 'useranswer' } // tên collection cố định
+  { timestamps: true, collection: 'useranswer' }
 )
 
 // Tạo model

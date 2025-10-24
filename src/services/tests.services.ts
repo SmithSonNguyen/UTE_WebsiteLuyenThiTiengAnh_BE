@@ -1,7 +1,17 @@
 import Test from '~/models/schemas/Test.schema'
 import Question from '~/models/schemas/Question.schema'
 import { Types } from 'mongoose'
-import { Section } from '~/models/types/Section.types'
+import UserAnswer, { IUserAnswerItem } from '~/models/schemas/UserAnswer.schema'
+
+// Interface cho kết quả trả về từ aggregation
+interface QuestionSection {
+  _id: string
+  part: number
+  title: string
+  questions: unknown[]
+  createdAt?: Date
+  updatedAt?: Date
+}
 
 // Interface cho filter parameters
 interface TestFilterParams {
@@ -93,8 +103,8 @@ const testsService = {
     }
   },
 
-  getAllQuestionsOptimized: async (testId: string): Promise<Section[]> => {
-    const sections = await Question.aggregate<Section>([
+  getAllQuestionsOptimized: async (testId: string): Promise<QuestionSection[]> => {
+    const sections = await Question.aggregate<QuestionSection>([
       // 1. Lọc theo testId
       {
         $match: { testId }
@@ -133,6 +143,80 @@ const testsService = {
     ])
 
     return sections
+  },
+
+  // now accepts optional mark and rightAnswerNumber which come from frontend grading
+  saveUserAnswers: async (
+    userId: string,
+    testId: string,
+    answers: IUserAnswerItem[],
+    mark?: number | null,
+    rightAnswerNumber?: number | null
+  ) => {
+    const payload: Record<string, unknown> = {
+      userId: new Types.ObjectId(userId),
+      testId,
+      answers
+    }
+
+    if (typeof mark === 'number') payload.mark = mark
+    if (typeof rightAnswerNumber === 'number') payload.rightAnswerNumber = rightAnswerNumber
+
+    // 🔍 Kiểm tra xem user đã từng làm bài này chưa
+    const existingAnswer = await UserAnswer.findOne({
+      userId: new Types.ObjectId(userId),
+      testId
+    })
+
+    if (existingAnswer) {
+      // ✅ Cập nhật lại bài cũ thay vì báo lỗi
+      existingAnswer.answers = answers
+      if (typeof mark === 'number') existingAnswer.mark = mark
+      if (typeof rightAnswerNumber === 'number') existingAnswer.rightAnswerNumber = rightAnswerNumber
+      existingAnswer.updatedAt = new Date()
+
+      await existingAnswer.save()
+      return existingAnswer
+    } else {
+      // ✅ Nếu chưa có thì tạo mới
+      const userAnswer = new UserAnswer(payload)
+      return await userAnswer.save()
+    }
+  },
+
+  getAllAnswers: async (testId: string) => {
+    const questions = await Question.find({ testId }).lean()
+
+    // Gom theo part (để frontend còn biết kỹ năng nào là listening/reading)
+    const sectionsMap = new Map()
+
+    for (const q of questions) {
+      if (!sectionsMap.has(q.part)) {
+        sectionsMap.set(q.part, {
+          part: q.part,
+          type: q.part <= 4 ? 'listening' : 'reading',
+          questions: []
+        })
+      }
+
+      // Mỗi câu chỉ cần number + answer
+      const subQs = Array.isArray(q.questions)
+        ? q.questions.map((x) => ({
+            number: x.number,
+            answer: x.answer
+          }))
+        : []
+
+      sectionsMap.get(q.part).questions.push(...subQs)
+    }
+
+    // Sort lại toàn bộ
+    const result = Array.from(sectionsMap.values()).map((section) => ({
+      ...section,
+      questions: section.questions.sort((a: { number: number }, b: { number: number }) => a.number - b.number)
+    }))
+
+    return result
   }
 }
 
