@@ -4,6 +4,7 @@ import {
   getAllClassesController,
   getClassesByLevelController,
   getClassDetailController,
+  getClassForStudentController,
   updateClassController,
   deleteClassController,
   enrollClassController,
@@ -11,8 +12,12 @@ import {
   getUpcomingClassesByCourseController,
   getUpcomingClassesByLevelController
 } from '~/controllers/classes.controllers'
+import { accessTokenValidator } from '~/middlewares/users.middlewares'
+import { requireEnrollment } from '~/middlewares/enrollments.middlewares'
 
 const classesRouter = Router()
+
+classesRouter.use(accessTokenValidator)
 
 /**
  * Description: Create a new class
@@ -84,6 +89,15 @@ classesRouter.get('/level/:level/upcoming', getUpcomingClassesByLevelController)
  * Params: classId
  */
 classesRouter.get('/:classId', getClassDetailController)
+
+/**
+ * Description: Get class information for student (includes enrollment status)
+ * Path: /classes/:classId/student
+ * Method: GET
+ * Params: classId
+ * Headers: Authorization (JWT token)
+ */
+classesRouter.get('/:classId/student', requireEnrollment, getClassForStudentController)
 
 /**
  * Description: Update class information

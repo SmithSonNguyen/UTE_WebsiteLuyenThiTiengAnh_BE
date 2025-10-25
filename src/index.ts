@@ -13,6 +13,7 @@ import coursesRouter from './routes/courses.routes'
 import reviewsRouter from './routes/reviews.routes'
 import classesRouter from './routes/classes.routes'
 import enrollmentsRouter from './routes/enrollments.routes'
+
 dotenv.config()
 
 const app = express()

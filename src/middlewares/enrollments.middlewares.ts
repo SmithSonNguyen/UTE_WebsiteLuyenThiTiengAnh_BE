@@ -34,7 +34,7 @@ export const requireEnrollment = async (req: Request, res: Response, next: NextF
     if (!enrollment) {
       // OPTION 1: Chỉ cho student (không check instructor) - Sử dụng cái này nếu chưa có role
       throw new ErrorWithStatus({
-        message: 'Bạn chưa đăng ký lớp học này hoặc đăng ký chưa được phê duyệt',
+        message: 'Bạn chưa đăng ký lớp học này hoặc đăng ký chưa được phê duyệt.',
         status: HTTP_STATUS.FORBIDDEN
       })
 

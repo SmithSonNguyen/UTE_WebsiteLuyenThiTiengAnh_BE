@@ -20,6 +20,7 @@ export interface RegisterReqBody {
   password: string
   confirm_password: string
   birthday: string
+  otp: string
 }
 
 export interface RefreshTokenReqBody {
@@ -32,4 +33,14 @@ export interface UpdateProfileReqBody {
   birthday?: string
   phone?: string
   avatar?: string
+}
+
+export interface SendOTPReqBody {
+  purpose: 'register' | 'reset_password'
+  lastname: string
+  firstname: string
+  email: string
+  password: string
+  confirm_password: string
+  birthday: string
 }

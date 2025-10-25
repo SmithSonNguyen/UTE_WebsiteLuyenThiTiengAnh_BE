@@ -162,6 +162,32 @@ export const getNextClassCodeController = async (req: Request, res: Response) =>
   }
 }
 
+// Lấy thông tin lớp học cho học viên (bao gồm enrollment status)
+export const getClassForStudentController = async (req: Request, res: Response) => {
+  try {
+    const { classId } = req.params
+    const studentId = req.decoded_authorization?.user_id // Lấy từ JWT token sau khi authenticate
+
+    const classInfo = await classService.getClassForStudent(classId, studentId)
+
+    if (!classInfo) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        message: 'Không tìm thấy lớp học'
+      })
+    }
+
+    return res.status(HTTP_STATUS.OK).json({
+      message: 'Lấy thông tin lớp học thành công',
+      result: classInfo
+    })
+  } catch (error) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      message: 'Lấy thông tin lớp học thất bại',
+      error: (error as Error).message
+    })
+  }
+}
+
 // Lấy danh sách lớp học sắp khai giảng theo courseId
 export const getUpcomingClassesByCourseController = async (req: Request, res: Response) => {
   try {

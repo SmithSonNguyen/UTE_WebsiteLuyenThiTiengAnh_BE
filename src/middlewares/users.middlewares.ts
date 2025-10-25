@@ -185,6 +185,47 @@ export const registerValidation = validate(
   )
 )
 
+export const ResetPasswordValidation = validate(
+  checkSchema(
+    {
+      new_password: {
+        notEmpty: {
+          errorMessage: USERS_MESSAGES.PASSWORD_IS_REQUIRED
+        },
+        isString: { errorMessage: USERS_MESSAGES.PASSWORD_MUST_BE_STRING },
+        isLength: { options: { min: 6, max: 100 }, errorMessage: USERS_MESSAGES.PASSWORD_LENGTH_MUST_BE_6_TO_100 },
+        isStrongPassword: {
+          options: { minSymbols: 1, minUppercase: 1, minNumbers: 1 },
+          errorMessage: USERS_MESSAGES.PASSWORD_MUST_BE_STRONG
+        }
+      },
+      confirm_password: {
+        notEmpty: {
+          errorMessage: USERS_MESSAGES.CONFIRM_PASSWORD_IS_REQUIRED
+        },
+        isString: { errorMessage: USERS_MESSAGES.CONFIRM_PASSWORD_MUST_BE_STRING },
+        isLength: {
+          options: { min: 6, max: 100 },
+          errorMessage: USERS_MESSAGES.CONFIRM_PASSWORD_LENGTH_MUST_BE_6_TO_100
+        },
+        isStrongPassword: {
+          options: { minSymbols: 1, minUppercase: 1, minNumbers: 1 },
+          errorMessage: USERS_MESSAGES.CONFRIM_PASSWORD_MUST_BE_STRONG
+        },
+        custom: {
+          options: (value, { req }) => {
+            if (value !== req.body.new_password) {
+              throw new Error(USERS_MESSAGES.CONFIRM_PASSWORD_DOES_NOT_MATCH)
+            }
+            return true
+          }
+        }
+      }
+    },
+    ['body']
+  )
+)
+
 export const refreshTokenValidator = validate(
   checkSchema(
     {
