@@ -20,7 +20,7 @@ export interface IUser extends Document {
   otp?: string | null
   otpExpiresAt?: Date | null
   profile: UserProfile
-  role: 'guest' | 'registered' | 'paid' | 'free'
+  role: 'guest' | 'registered' | 'paid' | 'free' | 'admin' | 'instructor'
   purchasedCourses: string[]
   wishList: string[]
   isActive: boolean
@@ -54,7 +54,7 @@ const UserSchema: Schema<IUser> = new Schema(
 
     role: {
       type: String,
-      enum: ['guest', 'instructor', 'admin'],
+      enum: ['guest', 'registered', 'paid', 'free', 'admin', 'instructor'],
       default: 'guest'
     },
 
