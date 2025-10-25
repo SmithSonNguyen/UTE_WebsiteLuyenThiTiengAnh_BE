@@ -73,7 +73,8 @@ export const USERS_MESSAGES = {
   REFRESH_TOKEN_SUCCESS: 'Refresh token success',
   PHONE_MUST_BE_STRING: 'Phone must be string',
   PHONE_LENGTH: 'Phone length must be from 1 to 15',
-  PHONE_IS_INVALID: 'Phone is invalid'
+  PHONE_IS_INVALID: 'Phone is invalid',
+  ROLE_MUST_BE_INSTRUCTOR: 'Role must be instructor'
 } as const //fix cứng, khong cho sửa đổi, không cho phép thay đổi giá trị của object này
 
 export const CLASSES_MESSAGES = {
@@ -87,4 +88,14 @@ export const CLASSES_MESSAGES = {
   CLASS_FULL: 'Class is full',
   INVALID_CLASS_CODE: 'Invalid class code',
   CLASS_CODE_ALREADY_EXISTS: 'Class code already exists'
+} as const
+
+export const INSTRUCTOR_MESSAGES = {
+  GET_PROFILE_SUCCESS: 'Get instructor profile successfully',
+  GET_PROFILE_FAILED: 'Failed to get instructor profile',
+  UPDATE_PROFILE_SUCCESS: 'Update instructor profile successfully',
+  UPDATE_PROFILE_FAILED: 'Failed to update instructor profile',
+  GET_CLASSES_SUCCESS: 'Get instructor classes successfully',
+  GET_CLASSES_FAILED: 'Failed to get instructor classes',
+  INSTRUCTOR_NOT_FOUND: 'Instructor not found'
 } as const

@@ -1,5 +1,10 @@
 import mongoose, { Document, Schema, Model } from 'mongoose'
 
+export interface IAttendance {
+  sessionDate: Date
+  status: 'present' | 'absent'
+}
+
 export interface IEnrollment extends Document {
   studentId: mongoose.Types.ObjectId
   classId: mongoose.Types.ObjectId
@@ -10,6 +15,7 @@ export interface IEnrollment extends Document {
     sessionsAttended: number
     totalSessions: number
   }
+  attendance: IAttendance[]
   paymentStatus: 'pending' | 'paid' | 'refunded'
   paymentInfo?: {
     amount: number
@@ -18,6 +24,7 @@ export interface IEnrollment extends Document {
   }
   createdAt: Date
   updatedAt: Date
+  calculateAttendance(): void
 }
 
 const enrollmentSchema: Schema<IEnrollment> = new Schema(
@@ -35,6 +42,16 @@ const enrollmentSchema: Schema<IEnrollment> = new Schema(
       sessionsAttended: { type: Number, default: 0, min: 0 },
       totalSessions: { type: Number, required: true, min: 1 }
     },
+    attendance: [
+      {
+        sessionDate: { type: Date, required: true },
+        status: {
+          type: String,
+          enum: ['present', 'absent'],
+          required: true
+        }
+      }
+    ],
     paymentStatus: {
       type: String,
       enum: ['pending', 'paid', 'refunded'],
@@ -54,6 +71,7 @@ enrollmentSchema.index({ studentId: 1, status: 1 })
 enrollmentSchema.index({ classId: 1, status: 1 })
 enrollmentSchema.index({ courseId: 1, status: 1 })
 enrollmentSchema.index({ studentId: 1, classId: 1 }, { unique: true }) // Prevent duplicate enrollments
+enrollmentSchema.index({ studentId: 1, 'attendance.sessionDate': 1 }) // Index for attendance queries
 
 // Virtual for completion percentage calculation
 enrollmentSchema.virtual('progress.completionPercentage').get(function () {
@@ -62,8 +80,15 @@ enrollmentSchema.virtual('progress.completionPercentage').get(function () {
     : 0
 })
 
-// Validation
+// Method to automatically calculate attendance
+enrollmentSchema.methods.calculateAttendance = function () {
+  this.progress.sessionsAttended = this.attendance.filter((a: IAttendance) => a.status === 'present').length
+}
+
+// Pre-save hook for automatic calculation and validation
 enrollmentSchema.pre('save', function (next) {
+  this.calculateAttendance()
+
   if (this.progress.sessionsAttended > this.progress.totalSessions) {
     next(new Error('Sessions attended cannot exceed total sessions'))
   }

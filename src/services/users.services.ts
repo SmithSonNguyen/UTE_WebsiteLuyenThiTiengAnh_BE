@@ -26,11 +26,12 @@ class UsersService {
     })
   }
 
-  private signRefreshToken({ user_id }: { user_id: string }) {
+  private signRefreshToken({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
     return signToken({
       payload: {
         user_id,
-        token_type: TokenType.RefreshToken
+        token_type: TokenType.RefreshToken,
+        role
       },
       privateKey: process.env.JWT_SECRET_REFRESH_TOKEN as string,
       options: {
@@ -41,7 +42,7 @@ class UsersService {
 
   private signAccessAndRefreshToken({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
     //do thấy medthod này được lặp lại nhiều nên tạo thành 1 method riêng
-    return Promise.all([this.signAccessToken({ user_id }, { role }), this.signRefreshToken({ user_id })])
+    return Promise.all([this.signAccessToken({ user_id }, { role }), this.signRefreshToken({ user_id }, { role })])
   }
 
   async login({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
@@ -155,11 +156,18 @@ class UsersService {
   }
 
   async refreshToken({ user_id, refresh_token }: { user_id: string; refresh_token: string }) {
+    // Lấy role từ database để đảm bảo role luôn chính xác
+    const user = await User.findById(user_id, 'role')
+    if (!user) {
+      throw new Error('User not found')
+    }
+    const role = user.role
+
     // Ở đây sẽ tạo ra 2 token mới => Dùng Promise.all để chạy song song 2 hàm vì nó không liên quan đến nhau
     // user chưa verify thì vẫn cho phép ngta lấy refresh token
     const [new_access_token, new_refresh_token] = await Promise.all([
-      this.signAccessToken({ user_id }),
-      this.signRefreshToken({ user_id }),
+      this.signAccessToken({ user_id }, { role }),
+      this.signRefreshToken({ user_id }, { role }),
       RefreshToken.deleteOne({ refreshtoken: refresh_token }) //Xoá refresh token ngta gửi lên
     ])
 

@@ -13,6 +13,7 @@ import coursesRouter from './routes/courses.routes'
 import reviewsRouter from './routes/reviews.routes'
 import classesRouter from './routes/classes.routes'
 import enrollmentsRouter from './routes/enrollments.routes'
+import instructorRouter from './routes/instructor.routes'
 
 dotenv.config()
 
@@ -38,6 +39,7 @@ app.use('/courses', coursesRouter)
 app.use('/reviews', reviewsRouter)
 app.use('/classes', classesRouter)
 app.use('/enrollments', enrollmentsRouter)
+app.use('/instructor', instructorRouter)
 
 databaseService.connect()
 
