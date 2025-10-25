@@ -4,24 +4,32 @@ import {
   loginValidator,
   registerValidation,
   refreshTokenValidator,
-  updateProfileValidator
+  updateProfileValidator,
+  ResetPasswordValidation
 } from '~/middlewares/users.middlewares'
 import {
   getMeController,
   loginController,
   refreshTokenController,
-  registerController,
   getUploadSignatureController,
   updateProfileController,
-  logoutController
+  logoutController,
+  verifyRegisterOTP,
+  sendOTP,
+  verifyResetPasswordOTP,
+  resetPassword
 } from '~/controllers/users.controllers'
 import { wrapRequestHandler } from '~/utils/handlers'
 
 const usersRouter = Router()
 export default usersRouter
 
-usersRouter.post('/register', registerValidation, wrapRequestHandler(registerController))
 usersRouter.post('/login', loginValidator, wrapRequestHandler(loginController))
+usersRouter.post('/send-otp-register', registerValidation, wrapRequestHandler(sendOTP))
+usersRouter.post('/send-otp-reset-password', wrapRequestHandler(sendOTP))
+usersRouter.post('/verify-otp-register', registerValidation, wrapRequestHandler(verifyRegisterOTP))
+usersRouter.post('/verify-otp-reset-password', wrapRequestHandler(verifyResetPasswordOTP))
+usersRouter.post('/reset-password', ResetPasswordValidation, wrapRequestHandler(resetPassword))
 
 /**
  *

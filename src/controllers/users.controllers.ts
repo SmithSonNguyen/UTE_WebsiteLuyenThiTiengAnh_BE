@@ -6,7 +6,8 @@ import {
   RegisterReqBody,
   RefreshTokenReqBody,
   TokenPayload,
-  UpdateProfileReqBody
+  UpdateProfileReqBody,
+  SendOTPReqBody
 } from '../models/requests/User.requests'
 import { ObjectId } from 'mongoose'
 import { USERS_MESSAGES } from '../constants/messages'
@@ -14,18 +15,76 @@ import { IUser } from '../models/schemas/User.schema'
 import { config } from 'dotenv'
 //import usersServices from '~/services/users.services'
 config()
-
-export const registerController = async (
-  req: Request<ParamsDictionary, any, RegisterReqBody>,
+// Gửi OTP
+export const sendOTP = async (
+  req: Request<ParamsDictionary, any, SendOTPReqBody>,
   res: Response,
   next: NextFunction
 ) => {
-  const result = await usersService.register(req.body)
-  return res.status(200).json({
-    message: USERS_MESSAGES.REGISTER_SUCCESS,
-    access_token: result.access_token,
-    refresh_token: result.refresh_token
-  })
+  try {
+    const { email, purpose } = req.body
+    const result = await usersService.sendOTP(email, purpose)
+    res.json(result)
+  } catch (error) {
+    console.error('Send OTP error:', error)
+    res.status(500).json({ message: 'Gửi OTP thất bại' })
+  }
+}
+
+// Xác thực OTP và tạo tài khoản
+export const verifyRegisterOTP = async (req: Request<ParamsDictionary, any, RegisterReqBody>, res: Response) => {
+  try {
+    const { email, otp, firstname, lastname, birthday, password, confirm_password } = req.body
+
+    if (!otp) {
+      return res.status(400).json({ message: 'OTP is required' })
+    }
+
+    const result = await usersService.verifyRegisterOTP({
+      email,
+      otp,
+      firstname,
+      lastname,
+      birthday,
+      password,
+      confirm_password
+    })
+    res.json(result)
+  } catch (error) {
+    console.error('Verify OTP error:', error)
+    res.status(500).json({ message: 'Xác thực OTP thất bại' })
+  }
+}
+
+export const verifyResetPasswordOTP = async (req: Request, res: Response) => {
+  try {
+    const { email, otp } = req.body
+    console.log('Received email and otp:', email)
+
+    if (!otp) {
+      return res.status(400).json({ message: 'OTP is required' })
+    }
+
+    const result = await usersService.verifyResetPasswordOTP({
+      email,
+      otp
+    })
+    res.json(result)
+  } catch (error) {
+    console.error('Verify OTP error:', error)
+    res.status(500).json({ message: 'Xác thực OTP thất bại' })
+  }
+}
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, new_password, confirm_password } = req.body
+    const result = await usersService.resetPassword(email, new_password, confirm_password)
+    res.json(result)
+  } catch (error) {
+    console.error('Reset Password error:', error)
+    res.status(500).json({ message: 'Đặt lại mật khẩu thất bại' })
+  }
 }
 
 export const loginController = async (
@@ -40,7 +99,8 @@ export const loginController = async (
     }
 
     const user_id = user._id as ObjectId
-    const result = await usersService.login({ user_id: user_id.toString() })
+    const role = user.role
+    const result = await usersService.login({ user_id: user_id.toString() }, { role })
 
     const access_token = result.access_token
     const refresh_token = result.refresh_token

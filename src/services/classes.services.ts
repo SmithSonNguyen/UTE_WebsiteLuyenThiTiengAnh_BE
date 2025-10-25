@@ -1,4 +1,5 @@
 import { Class, IClass } from '~/models/schemas/Class.schema'
+import Enrollment from '~/models/schemas/Enrollment.schema'
 import mongoose from 'mongoose'
 
 class ClassService {
@@ -82,6 +83,107 @@ class ClassService {
       return classDetail
     } catch (error) {
       throw new Error(`Lấy chi tiết lớp học thất bại: ${(error as Error).message}`)
+    }
+  }
+
+  // Lấy thông tin lớp học cho học viên (bao gồm enrollment status)
+  async getClassForStudent(classId: string, studentId?: string) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(classId)) {
+        throw new Error('Invalid class ID')
+      }
+
+      // Lấy thông tin lớp học cơ bản
+      const classDetail = await Class.findById(classId)
+        .populate([
+          {
+            path: 'courseId',
+            select:
+              'title level description duration price discountPrice discountPercent type rating studentsCount resources'
+          },
+          {
+            path: 'instructor',
+            select: 'profile'
+          }
+        ])
+        .lean()
+
+      if (!classDetail) {
+        throw new Error('Class not found')
+      }
+
+      let enrollmentInfo = null
+      let hasAccess = false
+      // Nếu có studentId, kiểm tra enrollment status
+      if (studentId && mongoose.Types.ObjectId.isValid(studentId)) {
+        const enrollment = await Enrollment.findOne({
+          studentId: new mongoose.Types.ObjectId(studentId),
+          classId: new mongoose.Types.ObjectId(classId),
+          status: { $in: ['enrolled', 'completed'] },
+          paymentStatus: 'paid'
+        }).lean()
+
+        if (enrollment) {
+          enrollmentInfo = {
+            enrollmentId: enrollment._id,
+            enrollmentDate: enrollment.enrollmentDate,
+            status: enrollment.status,
+            progress: enrollment.progress,
+            paymentInfo: enrollment.paymentInfo
+          }
+          hasAccess = true
+        }
+      }
+
+      // Tính toán thông tin bổ sung cho lớp học
+      const currentDate = new Date()
+      const startDate = new Date(classDetail.schedule.startDate!)
+      const endDate = new Date(classDetail.schedule.endDate!)
+
+      // Tính số buổi học
+      const totalWeeks = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
+      const totalSessions = totalWeeks * classDetail.schedule.days.length
+
+      // Status của lớp học
+      let classStatus: 'scheduled' | 'ongoing' | 'completed' | 'cancelled' = classDetail.status
+      if (currentDate < startDate) {
+        classStatus = 'scheduled'
+      } else if (currentDate > endDate) {
+        classStatus = 'completed'
+      } else {
+        classStatus = 'ongoing'
+      }
+
+      // Tính số chỗ còn lại
+      const spotsLeft = classDetail.capacity.maxStudents - classDetail.capacity.currentStudents
+
+      return {
+        ...classDetail,
+        enrollment: enrollmentInfo,
+        hasAccess,
+        canEnroll: !enrollmentInfo && spotsLeft > 0 && currentDate < startDate,
+        status: {
+          sessionsAttended: enrollmentInfo?.progress.sessionsAttended || 0,
+          totalSessions,
+          totalWeeks,
+          spotsLeft,
+          progressPercent: enrollmentInfo
+            ? Math.round((enrollmentInfo.progress.sessionsAttended / enrollmentInfo.progress.totalSessions) * 100)
+            : 0
+        },
+        computedStatus: classStatus,
+        timeInfo: {
+          isUpcoming: currentDate < startDate,
+          isOngoing: currentDate >= startDate && currentDate <= endDate,
+          isCompleted: currentDate > endDate,
+          daysUntilStart:
+            currentDate < startDate
+              ? Math.ceil((startDate.getTime() - currentDate.getTime()) / (24 * 60 * 60 * 1000))
+              : 0
+        }
+      }
+    } catch (error) {
+      throw new Error(`Lấy thông tin lớp học cho học viên thất bại: ${(error as Error).message}`)
     }
   }
 

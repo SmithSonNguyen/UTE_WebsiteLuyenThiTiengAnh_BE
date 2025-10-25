@@ -9,6 +9,7 @@ export interface LoginReqBody {
 
 export interface TokenPayload extends JwtPayload {
   user_id: string
+  role?: string
   token_type: TokenType
 }
 
@@ -19,6 +20,7 @@ export interface RegisterReqBody {
   password: string
   confirm_password: string
   birthday: string
+  otp: string
 }
 
 export interface RefreshTokenReqBody {
@@ -31,4 +33,14 @@ export interface UpdateProfileReqBody {
   birthday?: string
   phone?: string
   avatar?: string
+}
+
+export interface SendOTPReqBody {
+  purpose: 'register' | 'reset_password'
+  lastname: string
+  firstname: string
+  email: string
+  password: string
+  confirm_password: string
+  birthday: string
 }
