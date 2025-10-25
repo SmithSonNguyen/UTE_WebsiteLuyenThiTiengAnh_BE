@@ -19,6 +19,13 @@ export const USERS_MESSAGES = {
   CONFRIM_PASSWORD_MUST_BE_STRONG:
     'Confirm password must be 6-100 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character',
   CONFIRM_PASSWORD_DOES_NOT_MATCH: 'Confirm password does not match password',
+  // OTP Messages
+  SEND_OTP_SUCCESS: 'OTP sent successfully',
+  SEND_OTP_FAILED: 'Failed to send OTP',
+  VERIFY_OTP_SUCCESS: 'OTP verified successfully',
+  VERIFY_OTP_FAILED: 'Failed to verify OTP',
+  INVALID_OTP: 'Invalid or expired OTP',
+  REGISTER_FAILED: 'Registration failed',
   DATE_OF_BIRTH_MUST_BE_ISO8601: 'Date of birth must be ISO8601 format',
   LOGIN_SUCCESS: 'Login success',
   REGISTER_SUCCESS: 'Register success',
@@ -66,7 +73,9 @@ export const USERS_MESSAGES = {
   REFRESH_TOKEN_SUCCESS: 'Refresh token success',
   PHONE_MUST_BE_STRING: 'Phone must be string',
   PHONE_LENGTH: 'Phone length must be from 1 to 15',
-  PHONE_IS_INVALID: 'Phone is invalid'
+  PHONE_IS_INVALID: 'Phone is invalid',
+  USER_IS_INACTIVE: 'User is inactive',
+  PERMISSION_DENIED: 'Permission denied'
 } as const //fix cứng, khong cho sửa đổi, không cho phép thay đổi giá trị của object này
 
 export const CLASSES_MESSAGES = {

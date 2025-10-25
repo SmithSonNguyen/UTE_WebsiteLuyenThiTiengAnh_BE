@@ -20,7 +20,7 @@ export interface IUser extends Document {
   otp?: string | null
   otpExpiresAt?: Date | null
   profile: UserProfile
-  role: 'guest' | 'registered' | 'paid' | 'free'
+  role: 'guest' | 'registered' | 'paid' | 'free' | 'admin' | 'instructor'
   purchasedCourses: string[]
   wishList: string[]
   isActive: boolean
@@ -46,12 +46,15 @@ const UserSchema: Schema<IUser> = new Schema(
       birthday: { type: Date, required: true },
       phone: { type: String, default: '', match: [/^\+?[0-9]\d{1,14}$/, 'is not a valid phone number'] },
       bio: { type: String, default: '' },
-      avatar: { type: String, default: '' }
+      avatar: {
+        type: String,
+        default: 'https://res.cloudinary.com/dfinxo4uj/image/upload/v1761221144/default_avatar_gidgqw.png'
+      }
     },
 
     role: {
       type: String,
-      enum: ['guest', 'registered', 'paid', 'free'],
+      enum: ['guest', 'registered', 'paid', 'free', 'admin', 'instructor'],
       default: 'guest'
     },
 

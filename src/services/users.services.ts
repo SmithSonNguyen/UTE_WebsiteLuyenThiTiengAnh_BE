@@ -1,19 +1,23 @@
 import { signToken } from '~/utils/jwt'
 import { TokenType } from '~/constants/enum'
 import RefreshToken from '~/models/schemas/RefreshToken.schema'
-import databaseService from './database.services'
+import OTP from '~/models/schemas/OTP.schema'
 import { RegisterReqBody, UpdateProfileReqBody } from '~/models/requests/User.requests'
 import User from '~/models/schemas/User.schema'
 import { hashPassword } from '~/utils/crypto'
 import crypto from 'crypto'
-import mongoose from 'mongoose'
+import mongoose, { ObjectId } from 'mongoose'
+import { sendOTPEmail } from '~/services/email.services'
+import HTTP_STATUS from '~/constants/httpStatus'
+import e from 'express'
 
 class UsersService {
-  private signAccessToken({ user_id }: { user_id: string }) {
+  private signAccessToken({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
     return signToken({
       payload: {
         user_id,
-        token_type: TokenType.AccessToken
+        token_type: TokenType.AccessToken,
+        role
       },
       privateKey: process.env.JWT_SECRET_ACCESS_TOKEN as string,
       options: {
@@ -35,13 +39,13 @@ class UsersService {
     })
   }
 
-  private signAccessAndRefreshToken({ user_id }: { user_id: string }) {
+  private signAccessAndRefreshToken({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
     //do thấy medthod này được lặp lại nhiều nên tạo thành 1 method riêng
-    return Promise.all([this.signAccessToken({ user_id }), this.signRefreshToken({ user_id })])
+    return Promise.all([this.signAccessToken({ user_id }, { role }), this.signRefreshToken({ user_id })])
   }
 
-  async login({ user_id }: { user_id: string }) {
-    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({ user_id })
+  async login({ user_id }: { user_id: string }, { role }: { role?: string } = {}) {
+    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({ user_id }, { role })
 
     // Upsert: nếu user_id tồn tại thì update refreshtoken, nếu không có thì tạo mới
     await RefreshToken.findOneAndUpdate(
@@ -63,29 +67,91 @@ class UsersService {
     return user.profile
   }
 
-  async register(payload: RegisterReqBody) {
-    const result = await User.create({
-      ...payload,
-      password: hashPassword(payload.password),
-      profile: {
-        lastname: payload.lastname,
-        firstname: payload.firstname,
-        email: payload.email,
-        birthday: new Date(payload.birthday)
-      }
-    })
-    const user_id = result.id.toString()
-    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({ user_id })
-    await RefreshToken.create({
-      user_id: result._id,
-      refreshtoken: refresh_token
-    })
-    return { access_token, refresh_token }
-  }
-
   async checkEmailExist(email: string) {
     const user = await User.findOne({ 'profile.email': email })
     return !!user
+  }
+
+  // Gửi OTP cho đăng ký hoặc đặt lại mật khẩu
+  async sendOTP(email: string, purpose: 'register' | 'reset_password') {
+    // Kiểm tra email đã tồn tại chưa
+    if (purpose === 'register') {
+      const emailExists = await this.checkEmailExist(email)
+      if (emailExists) {
+        return { status: HTTP_STATUS.BAD_REQUEST, message: 'Email đã được sử dụng' }
+      }
+    } else if (purpose === 'reset_password') {
+      const emailExists = await this.checkEmailExist(email)
+      if (!emailExists) {
+        return { status: HTTP_STATUS.BAD_REQUEST, message: 'Email chưa được đăng ký' }
+      }
+    }
+
+    // Tạo và gửi OTP
+    const otp = await OTP.createOTP(email, purpose)
+    await sendOTPEmail(email, otp, purpose)
+
+    return {
+      message: 'OTP đã được gửi đến email của bạn',
+      expiresIn: 5 * 60 // 5 minutes in seconds
+    }
+  }
+
+  async verifyRegisterOTP(payload: RegisterReqBody) {
+    if (payload.password !== payload.confirm_password) {
+      return { status: HTTP_STATUS.BAD_REQUEST, message: 'Mật khẩu xác nhận không khớp' }
+    }
+
+    const valid = await OTP.verifyOTP(payload.email, payload.otp, 'register')
+    if (!valid) return { status: HTTP_STATUS.BAD_REQUEST, message: 'OTP không hợp lệ hoặc đã hết hạn' }
+
+    const hashed = hashPassword(payload.password)
+    const newUser = new User({
+      password: hashed,
+      isVerified: true,
+      profile: {
+        firstname: payload.firstname,
+        lastname: payload.lastname,
+        email: payload.email,
+        birthday: payload.birthday,
+        phone: ''
+      },
+      role: 'guest',
+      purchasedCourses: [],
+      wishList: []
+    })
+
+    await newUser.save()
+    return { status: HTTP_STATUS.CREATED, message: 'Đăng ký thành công', userId: newUser._id }
+  }
+
+  async verifyResetPasswordOTP({ email, otp }: { email: string; otp: string }) {
+    try {
+      const valid = await OTP.verifyOTP(email, otp, 'reset_password')
+      if (!valid) return { status: HTTP_STATUS.BAD_REQUEST, message: 'OTP không hợp lệ hoặc đã hết hạn' }
+      return { status: HTTP_STATUS.OK, message: 'OTP hợp lệ' }
+    } catch (error) {
+      console.error('Error verifying reset password OTP:', error)
+      return { status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Xác thực OTP thất bại' }
+    }
+  }
+
+  async resetPassword(email: string, new_password: string, confirm_password: string) {
+    if (new_password !== confirm_password) {
+      return { status: HTTP_STATUS.BAD_REQUEST, message: 'Mật khẩu xác nhận không khớp' }
+    }
+    const hashed = hashPassword(new_password)
+    const result = await User.findOneAndUpdate(
+      { 'profile.email': email },
+      { $set: { password: hashed } },
+      { new: true }
+    )
+
+    if (!result) {
+      return { status: HTTP_STATUS.NOT_FOUND, message: 'Người dùng không tồn tại' }
+    }
+
+    return { status: HTTP_STATUS.OK, message: 'Đặt lại mật khẩu thành công' }
   }
 
   async refreshToken({ user_id, refresh_token }: { user_id: string; refresh_token: string }) {
