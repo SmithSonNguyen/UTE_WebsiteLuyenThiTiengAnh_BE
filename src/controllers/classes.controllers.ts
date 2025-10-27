@@ -231,3 +231,22 @@ export const getUpcomingClassesByLevelController = async (req: Request, res: Res
     })
   }
 }
+
+//Cập nhật link lớp học//
+export const updateClassLinkController = async (req: Request, res: Response) => {
+  try {
+    const { classId } = req.params
+    const { meetLink } = req.body
+    const result = await classService.updateClassLink(classId, meetLink)
+
+    return res.status(HTTP_STATUS.OK).json({
+      message: 'Cập nhật link lớp học thành công',
+      result
+    })
+  } catch (error) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      message: 'Cập nhật link lớp học thất bại',
+      error: (error as Error).message
+    })
+  }
+}

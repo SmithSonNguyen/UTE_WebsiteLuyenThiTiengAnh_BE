@@ -99,7 +99,7 @@ class InstructorService {
     const instructorObjectId = new ObjectId(instructorId)
 
     const classes = await Class.find({ instructor: instructorObjectId })
-      .populate('courseId', 'name title description level')
+      .populate('courseId', 'name title description level resources')
       .sort({ createdAt: -1 })
 
     // Thêm thống kê cho mỗi lớp

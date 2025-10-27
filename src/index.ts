@@ -14,6 +14,7 @@ import reviewsRouter from './routes/reviews.routes'
 import classesRouter from './routes/classes.routes'
 import enrollmentsRouter from './routes/enrollments.routes'
 import instructorRouter from './routes/instructor.routes'
+import attendanceRouter from './routes/attendance.routes'
 
 dotenv.config()
 
@@ -40,6 +41,7 @@ app.use('/reviews', reviewsRouter)
 app.use('/classes', classesRouter)
 app.use('/enrollments', enrollmentsRouter)
 app.use('/instructor', instructorRouter)
+app.use('/attendance', attendanceRouter)
 
 databaseService.connect()
 
