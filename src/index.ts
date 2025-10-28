@@ -16,6 +16,7 @@ import enrollmentsRouter from './routes/enrollments.routes'
 import instructorRouter from './routes/instructor.routes'
 import attendanceRouter from './routes/attendance.routes'
 
+import adminRouter from '~/routes/admin.routes'
 dotenv.config()
 
 const app = express()
@@ -42,6 +43,7 @@ app.use('/classes', classesRouter)
 app.use('/enrollments', enrollmentsRouter)
 app.use('/instructor', instructorRouter)
 app.use('/attendance', attendanceRouter)
+app.use('/admin', adminRouter)
 
 databaseService.connect()
 
