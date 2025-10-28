@@ -104,7 +104,7 @@ attendanceSchema.index({ 'records.studentId': 1 }) // Query student attendance
 attendanceSchema.index({ classId: 1, sessionNumber: 1 }) // Query by session number
 attendanceSchema.index({ status: 1 }) // Query by status
 attendanceSchema.index({ sessionDate: 1 }) // Query by date range
-
+attendanceSchema.index({ classId: 1, status: 1, 'records.studentId': 1, 'records.isPresent': 1 })
 // Static methods
 attendanceSchema.statics.findByClass = function (classId: mongoose.Types.ObjectId) {
   return this.find({ classId }).sort({ sessionDate: -1 })

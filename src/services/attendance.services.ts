@@ -18,6 +18,74 @@ interface IEnrollmentWithStudent {
 }
 
 class AttendanceService {
+  // Kiểm tra xem ngày được chọn có nằm trong lịch dạy của lớp không
+  private async validateClassSchedule(classId: string, sessionDate: string) {
+    const classInfo = await Class.findById(classId, 'schedule')
+    if (!classInfo) {
+      throw new Error('Class not found')
+    }
+
+    // Parse ngày được chọn
+    const [year, month, day] = sessionDate.split('-').map(Number)
+    const selectedDate = new Date(Date.UTC(year, month - 1, day))
+
+    // Lấy thứ trong tuần (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const dayOfWeek = selectedDate.getUTCDay()
+
+    // Mapping từ number sang string tiếng Anh và tiếng Việt
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const dayNamesVN = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+
+    const selectedDayName = dayNames[dayOfWeek]
+    const selectedDayNameVN = dayNamesVN[dayOfWeek]
+
+    // Kiểm tra xem thứ được chọn có trong lịch dạy không
+    const validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const
+    type ValidDay = (typeof validDays)[number]
+
+    if (!classInfo.schedule.days.includes(selectedDayName as ValidDay)) {
+      // Chuyển đổi lịch dạy sang tiếng Việt
+      const scheduleDaysVN = classInfo.schedule.days.map((day: string) => {
+        const dayIndex = dayNames.indexOf(day)
+        return dayIndex !== -1 ? dayNamesVN[dayIndex] : day
+      })
+
+      throw new Error(
+        `Lớp học không có lịch dạy vào ${selectedDayNameVN}. Lịch dạy của lớp vào: ${scheduleDaysVN.join(', ')}`
+      )
+    }
+
+    // Kiểm tra xem ngày có nằm trong khoảng thời gian của khóa học không
+    const startDate = new Date(classInfo.schedule.startDate)
+    const endDate = classInfo.schedule.endDate ? new Date(classInfo.schedule.endDate) : null
+
+    // So sánh chỉ phần ngày (không tính giờ)
+    const selectedDateOnly = new Date(
+      selectedDate.getUTCFullYear(),
+      selectedDate.getUTCMonth(),
+      selectedDate.getUTCDate()
+    )
+    const startDateOnly = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate())
+
+    if (selectedDateOnly < startDateOnly) {
+      throw new Error(
+        `Ngày được chọn (${sessionDate}) trước ngày bắt đầu khóa học (${startDate.toISOString().split('T')[0]})`
+      )
+    }
+
+    if (endDate) {
+      const endDateOnly = new Date(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate())
+
+      if (selectedDateOnly > endDateOnly) {
+        throw new Error(
+          `Ngày được chọn (${sessionDate}) sau ngày kết thúc khóa học (${endDate.toISOString().split('T')[0]})`
+        )
+      }
+    }
+
+    return true
+  }
+
   // Lấy danh sách sinh viên trong lớp (từ enrollment)
   async getClassStudents(classId: string) {
     try {
@@ -71,6 +139,10 @@ class AttendanceService {
         throw new Error('Invalid class ID')
       }
 
+      // Kiểm tra xem ngày được chọn có nằm trong lịch dạy của lớp không
+
+      await this.validateClassSchedule(classId, sessionDate)
+
       // Tạo date object từ string YYYY-MM-DD ở UTC (đầu ngày)
       const [year, month, day] = sessionDate.split('-').map(Number)
       const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)) // Fix: Sử dụng Date.UTC
@@ -81,6 +153,7 @@ class AttendanceService {
       })
 
       if (!attendance) {
+        console.log('📝 [getAttendanceByDate] No existing attendance, creating new...')
         // Nếu chưa có điểm danh cho ngày này, tạo mới với danh sách sinh viên
         const { students } = await this.getClassStudents(classId)
 
@@ -99,12 +172,13 @@ class AttendanceService {
         })
 
         await newAttendance.save()
+
         return newAttendance
       }
 
       return attendance
     } catch (error) {
-      throw new Error(`Lấy điểm danh thất bại: ${(error as Error).message}`)
+      throw new Error(`${(error as Error).message}`)
     }
   }
 
@@ -123,6 +197,10 @@ class AttendanceService {
       if (!mongoose.Types.ObjectId.isValid(classId)) {
         throw new Error('Invalid class ID')
       }
+
+      // Kiểm tra xem ngày được chọn có nằm trong lịch dạy của lớp không
+
+      await this.validateClassSchedule(classId, sessionDate)
 
       // Tạo date object từ string YYYY-MM-DD ở UTC (đầu ngày)
       const [year, month, day] = sessionDate.split('-').map(Number)
@@ -157,6 +235,10 @@ class AttendanceService {
       attendance.status = 'finalized'
 
       await attendance.save()
+
+      // 🔄 Sync enrollment progress for all students in this class
+      console.log('🔄 [saveAttendance] Syncing enrollment progress...')
+      await this.syncEnrollmentProgress(classId)
 
       // Populate để trả về thông tin đầy đủ
       await attendance.populate([
@@ -274,6 +356,45 @@ class AttendanceService {
       }
     } catch (error) {
       throw new Error(`Lấy tổng quan điểm danh lớp thất bại: ${(error as Error).message}`)
+    }
+  }
+
+  // 🔄 Sync enrollment progress cho tất cả sinh viên trong lớp
+  private async syncEnrollmentProgress(classId: string) {
+    try {
+      const enrollments = await Enrollment.find({
+        classId: new mongoose.Types.ObjectId(classId),
+        status: { $in: ['enrolled', 'completed'] },
+        paymentStatus: 'paid'
+      })
+
+      console.log(`📊 [syncEnrollmentProgress] Found ${enrollments.length} enrollments to sync`)
+
+      // Sync attendance cho từng enrollment
+      const syncPromises = enrollments.map(async (enrollment) => {
+        try {
+          const result = await enrollment.syncAttendanceFromRecords()
+          console.log(`✅ Synced student ${enrollment.studentId}: ${result.sessionsAttended}`)
+          return result
+        } catch (error) {
+          console.error(`❌ Failed to sync student ${enrollment.studentId}:`, error)
+          return null
+        }
+      })
+
+      const results = await Promise.allSettled(syncPromises)
+      const successCount = results.filter((r) => r.status === 'fulfilled' && r.value !== null).length
+
+      console.log(`✅ [syncEnrollmentProgress] Successfully synced ${successCount}/${enrollments.length} enrollments`)
+
+      return {
+        total: enrollments.length,
+        synced: successCount,
+        failed: enrollments.length - successCount
+      }
+    } catch (error) {
+      console.error('❌ [syncEnrollmentProgress] Error:', error)
+      throw new Error(`Sync enrollment progress failed: ${(error as Error).message}`)
     }
   }
 }
