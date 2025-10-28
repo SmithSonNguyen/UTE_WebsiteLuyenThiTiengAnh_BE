@@ -146,6 +146,7 @@ export const refreshTokenController = async (
   const { user_id } = req.decoded_refresh_token as TokenPayload
 
   // Truyền vào service để tạo mới access_token và refresh_token
+  // Không cần truyền role vì service sẽ tự lấy từ database
   const result = await usersService.refreshToken({ user_id, refresh_token })
 
   const refresh_token_new = result.refresh_token
