@@ -74,7 +74,7 @@ export const USERS_MESSAGES = {
   PHONE_MUST_BE_STRING: 'Phone must be string',
   PHONE_LENGTH: 'Phone length must be from 1 to 15',
   PHONE_IS_INVALID: 'Phone is invalid',
-  ROLE_MUST_BE_INSTRUCTOR: 'Role must be instructor'
+  ROLE_MUST_BE_INSTRUCTOR: 'Role must be instructor',
   USER_IS_INACTIVE: 'User is inactive',
   PERMISSION_DENIED: 'Permission denied'
 } as const //fix cứng, khong cho sửa đổi, không cho phép thay đổi giá trị của object này
