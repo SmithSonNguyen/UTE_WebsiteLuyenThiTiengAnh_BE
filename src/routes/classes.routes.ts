@@ -10,10 +10,12 @@ import {
   enrollClassController,
   getNextClassCodeController,
   getUpcomingClassesByCourseController,
-  getUpcomingClassesByLevelController
+  getUpcomingClassesByLevelController,
+  updateClassLinkController
 } from '~/controllers/classes.controllers'
 import { accessTokenValidator } from '~/middlewares/users.middlewares'
 import { requireEnrollment } from '~/middlewares/enrollments.middlewares'
+import { requireInstructor } from '~/middlewares/instructors.middlewares'
 
 const classesRouter = Router()
 
@@ -124,5 +126,7 @@ classesRouter.delete('/:classId', deleteClassController)
  * Body: { userId: string }
  */
 classesRouter.post('/:classId/enroll', enrollClassController)
+
+classesRouter.post('/:classId/update-link', requireInstructor, updateClassLinkController)
 
 export default classesRouter

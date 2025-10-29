@@ -74,6 +74,7 @@ export const USERS_MESSAGES = {
   PHONE_MUST_BE_STRING: 'Phone must be string',
   PHONE_LENGTH: 'Phone length must be from 1 to 15',
   PHONE_IS_INVALID: 'Phone is invalid',
+  ROLE_MUST_BE_INSTRUCTOR: 'Role must be instructor',
   USER_IS_INACTIVE: 'User is inactive',
   PERMISSION_DENIED: 'Permission denied'
 } as const //fix cứng, khong cho sửa đổi, không cho phép thay đổi giá trị của object này
@@ -89,4 +90,31 @@ export const CLASSES_MESSAGES = {
   CLASS_FULL: 'Class is full',
   INVALID_CLASS_CODE: 'Invalid class code',
   CLASS_CODE_ALREADY_EXISTS: 'Class code already exists'
+} as const
+
+export const INSTRUCTOR_MESSAGES = {
+  GET_PROFILE_SUCCESS: 'Get instructor profile successfully',
+  GET_PROFILE_FAILED: 'Failed to get instructor profile',
+  UPDATE_PROFILE_SUCCESS: 'Update instructor profile successfully',
+  UPDATE_PROFILE_FAILED: 'Failed to update instructor profile',
+  GET_CLASSES_SUCCESS: 'Get instructor classes successfully',
+  GET_CLASSES_FAILED: 'Failed to get instructor classes',
+  INSTRUCTOR_NOT_FOUND: 'Instructor not found'
+} as const
+
+export const ATTENDANCE_MESSAGES = {
+  GET_STUDENTS_SUCCESS: 'Get class students successfully',
+  GET_STUDENTS_FAILED: 'Failed to get class students',
+  GET_ATTENDANCE_SUCCESS: 'Get attendance successfully',
+  GET_ATTENDANCE_FAILED: 'Failed to get attendance',
+  SAVE_ATTENDANCE_SUCCESS: 'Save attendance successfully',
+  SAVE_ATTENDANCE_FAILED: 'Failed to save attendance',
+  GET_HISTORY_SUCCESS: 'Get attendance history successfully',
+  GET_HISTORY_FAILED: 'Failed to get attendance history',
+  GET_OVERVIEW_SUCCESS: 'Get attendance overview successfully',
+  GET_OVERVIEW_FAILED: 'Failed to get attendance overview',
+  INVALID_DATE: 'Invalid date format',
+  INVALID_ATTENDANCE_DATA: 'Invalid attendance data',
+  CLASS_NOT_FOUND: 'Class not found',
+  STUDENTS_NOT_FOUND: 'No students found in this class'
 } as const

@@ -329,6 +329,16 @@ class ClassService {
       throw new Error(`Lấy lớp học sắp khai giảng theo level thất bại: ${(error as Error).message}`)
     }
   }
+
+  //Cập nhật link lớp học
+  async updateClassLink(classId: string, meetLink: string) {
+    try {
+      const updatedClass = await Class.findByIdAndUpdate(classId, { 'schedule.meetLink': meetLink }, { new: true })
+      return { meetLink: updatedClass?.schedule.meetLink }
+    } catch (error) {
+      throw new Error(`Cập nhật link lớp học thất bại: ${(error as Error).message}`)
+    }
+  }
 }
 
 const classService = new ClassService()

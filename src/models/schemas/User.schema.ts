@@ -12,6 +12,15 @@ interface UserProfile {
   avatar?: string
 }
 
+interface InstructorInfo {
+  position?: string
+  specialization?: string
+  experience?: string
+  education?: string
+  joinDate?: Date
+  certificate?: { name: string; url: string }[]
+}
+
 // Định nghĩa interface cho User
 export interface IUser extends Document {
   password: string
@@ -20,6 +29,7 @@ export interface IUser extends Document {
   otp?: string | null
   otpExpiresAt?: Date | null
   profile: UserProfile
+  instructorInfo: InstructorInfo
   role: 'guest' | 'registered' | 'paid' | 'free' | 'admin' | 'instructor'
   purchasedCourses: string[]
   wishList: string[]
@@ -49,7 +59,17 @@ const UserSchema: Schema<IUser> = new Schema(
       avatar: {
         type: String,
         default: 'https://res.cloudinary.com/dfinxo4uj/image/upload/v1761221144/default_avatar_gidgqw.png'
-      }
+      },
+      linkSocial: { type: String, default: '' }
+    },
+
+    instructorInfo: {
+      position: { type: String, default: '' },
+      specialization: { type: String, default: '' },
+      experience: { type: String, default: '' },
+      education: { type: String, default: '' },
+      joinDate: { type: Date, default: Date.now },
+      certificate: { type: [{ name: String, url: String }], default: [] }
     },
 
     role: {
