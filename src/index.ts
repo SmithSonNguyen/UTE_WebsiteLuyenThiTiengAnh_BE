@@ -15,6 +15,7 @@ import classesRouter from './routes/classes.routes'
 import enrollmentsRouter from './routes/enrollments.routes'
 import instructorRouter from './routes/instructor.routes'
 import attendanceRouter from './routes/attendance.routes'
+import paymentRouter from './routes/payment.routes'
 
 import adminRouter from '~/routes/admin.routes'
 dotenv.config()
@@ -32,6 +33,29 @@ app.use(
 app.use(cookieParser())
 app.use(express.json())
 
+// 🔍 DEBUG Middleware
+app.use((req, res, next) => {
+  console.log('\n' + '='.repeat(60))
+  console.log(`📨 ${req.method} ${req.originalUrl}`)
+  console.log('='.repeat(60))
+  console.log('Headers:', {
+    'content-type': req.headers['content-type'],
+    authorization: req.headers.authorization ? 'Present ✅' : 'Missing ❌',
+    'content-length': req.headers['content-length']
+  })
+  console.log('Body:', {
+    value: req.body,
+    type: typeof req.body,
+    isObject: typeof req.body === 'object',
+    isNull: req.body === null,
+    isUndefined: req.body === undefined,
+    keys: req.body ? Object.keys(req.body) : 'N/A',
+    stringified: JSON.stringify(req.body)
+  })
+  console.log('='.repeat(60) + '\n')
+  next()
+})
+
 // middleware: nghĩa là phải chạy qua hàm use này trước, xong mới vô userRouter nếu user truy cập /users/...
 app.use('/users', usersRouter)
 app.use('/lessons', lessonsRouter)
@@ -44,6 +68,7 @@ app.use('/enrollments', enrollmentsRouter)
 app.use('/instructor', instructorRouter)
 app.use('/attendance', attendanceRouter)
 app.use('/admin', adminRouter)
+app.use('/payment', paymentRouter)
 
 databaseService.connect()
 

@@ -53,6 +53,7 @@
     "mongodb": "^6.18.0",
     "mongoose": "^8.18.0",
     "nodemailer": "^7.0.10",
-    "react-toastify": "^11.0.5"
+    "react-toastify": "^11.0.5",
+    "vnpay": "^2.4.4"
   }
 }

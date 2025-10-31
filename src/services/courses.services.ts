@@ -252,15 +252,30 @@ class CoursesService {
       throw new Error('Course not found')
     }
 
-    // Logic kiểm tra enrollment/payment sẽ được implement sau
-    // Hiện tại return false để các lesson bị lock
-    const hasAccess = false // TODO: Check user enrollment & payment status
+    let hasAccess = false
+    let enrollmentInfo = null
+
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      // Kiểm tra enrollment với payment đã paid
+      const enrollment = await Enrollment.findOne({
+        studentId: new mongoose.Types.ObjectId(userId),
+        courseId: new mongoose.Types.ObjectId(courseId),
+        status: { $in: ['enrolled', 'completed'] },
+        paymentStatus: 'paid'
+      }).lean()
+
+      if (enrollment) {
+        hasAccess = true
+        enrollmentInfo = enrollment
+      }
+    }
 
     return {
       hasAccess,
       courseType: course.type,
       accessDuration: course.preRecordedContent?.accessDuration,
-      accessDurationUnit: course.preRecordedContent?.accessDurationUnit
+      accessDurationUnit: course.preRecordedContent?.accessDurationUnit,
+      enrollment: enrollmentInfo
     }
   }
 }
