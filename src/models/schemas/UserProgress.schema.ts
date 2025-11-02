@@ -1,125 +1,258 @@
-import mongoose, { Document, Schema, Model } from 'mongoose'
+import mongoose, { Schema, Model, HydratedDocument } from 'mongoose'
 
-export interface IUserProgress extends Document {
-  user: mongoose.Types.ObjectId
-  course: mongoose.Types.ObjectId
+// Interface cho subdocuments
+interface IQuizResult {
+  score: number
+  totalQuestions: number
+  percentage: number
+  completedAt: Date
+}
 
-  // Tiến độ tổng thể
-  overallProgress: {
-    completedTopics: number
-    totalTopics: number
-    completedLessons: number
-    totalLessons: number
-    completionPercentage: number // Auto-calculated
-    totalTimeSpent: number // Total minutes spent
-  }
+interface IVocabularyProgress {
+  lessonId: number
+  lessonTitle: string
+  progress: number
+  completed: boolean
+  unlocked: boolean
+  totalWords: number
+  quizResults: IQuizResult[]
+  lastAccessedAt: Date
+  timeSpent: number
+}
 
-  // Tiến độ từng topic
-  topicProgress: {
-    topic: mongoose.Types.ObjectId
-    completedLessons: number
-    totalLessons: number
-    completionPercentage: number
-    lastAccessedAt?: Date
-    timeSpent: number // minutes spent on this topic
-  }[]
+interface ILearningStats {
+  totalLessonsCompleted: number
+  totalWordsLearned: number
+  currentStreak: number
+  longestStreak: number
+  totalStudyDays: number
+  lastStudyDate: Date | null
+  totalTimeSpent: number
+}
 
-  // Tiến độ từng lesson
-  lessonProgress: {
-    lesson: mongoose.Types.ObjectId
-    status: 'not_started' | 'in_progress' | 'completed'
-    progress: number // 0-100, for video lessons (% watched)
-    timeSpent: number // minutes spent on this lesson
-    completedAt?: Date
-    lastAccessedAt: Date
-    attempts?: number // For quiz/exercise lessons
-    bestScore?: number // For quiz/exercise lessons
-  }[]
-
-  // Thống kê học tập
-  learningStats: {
-    currentStreak: number // Số ngày học liên tục
-    longestStreak: number
-    totalStudyDays: number
-    averageSessionTime: number // Average minutes per session
-    lastStudyDate: Date
-  }
-
+// Interface chính cho document
+export interface IUserProgress {
+  userId: string
+  vocabularyProgress: IVocabularyProgress[]
+  learningStats: ILearningStats
   createdAt: Date
   updatedAt: Date
 }
 
-const userProgressSchema: Schema<IUserProgress> = new Schema(
-  {
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    course: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+// Interface cho instance methods
+export interface IUserProgressMethods {
+  updateLessonProgress(
+    lessonId: number,
+    lessonTitle: string,
+    quizScore: number,
+    totalQuestions: number,
+    totalWords: number
+  ): Promise<HydratedDocument<IUserProgress, IUserProgressMethods>>
+  updateStreak(): void
+  getLessonProgress(lessonId: number): IVocabularyProgress | undefined
+  getUnlockedLessons(): IVocabularyProgress[]
+}
 
-    overallProgress: {
-      completedTopics: { type: Number, default: 0 },
-      totalTopics: { type: Number, default: 0 },
-      completedLessons: { type: Number, default: 0 },
-      totalLessons: { type: Number, default: 0 },
-      completionPercentage: { type: Number, default: 0, min: 0, max: 100 },
-      totalTimeSpent: { type: Number, default: 0 }
+// Interface cho static methods
+interface IUserProgressModel extends Model<IUserProgress, IUserProgressMethods> {
+  initializeUserProgress(
+    userId: string,
+    totalLessons?: number
+  ): Promise<HydratedDocument<IUserProgress, IUserProgressMethods>>
+}
+
+// Type alias cho document đã được hydrate
+export type UserProgressDocument = HydratedDocument<IUserProgress, IUserProgressMethods>
+
+const userProgressSchema = new Schema<IUserProgress, IUserProgressModel, IUserProgressMethods>(
+  {
+    userId: {
+      type: String,
+      required: true,
+      index: true
     },
 
-    topicProgress: [
+    vocabularyProgress: [
       {
-        topic: { type: Schema.Types.ObjectId, ref: 'Topic', required: true },
-        completedLessons: { type: Number, default: 0 },
-        totalLessons: { type: Number, default: 0 },
-        completionPercentage: { type: Number, default: 0, min: 0, max: 100 },
-        lastAccessedAt: { type: Date },
+        lessonId: { type: Number, required: true },
+        lessonTitle: { type: String, required: true },
+        progress: { type: Number, default: 0, min: 0, max: 100 },
+        completed: { type: Boolean, default: false },
+        unlocked: { type: Boolean, default: false },
+        totalWords: { type: Number, default: 0 },
+        quizResults: [
+          {
+            score: { type: Number, required: true },
+            totalQuestions: { type: Number, required: true },
+            percentage: { type: Number, required: true },
+            completedAt: { type: Date, default: Date.now }
+          }
+        ],
+        lastAccessedAt: { type: Date, default: Date.now },
         timeSpent: { type: Number, default: 0 }
       }
     ],
 
-    lessonProgress: [
-      {
-        lesson: { type: Schema.Types.ObjectId, ref: 'Lesson', required: true },
-        status: {
-          type: String,
-          enum: ['not_started', 'in_progress', 'completed'],
-          default: 'not_started'
-        },
-        progress: { type: Number, default: 0, min: 0, max: 100 },
-        timeSpent: { type: Number, default: 0 },
-        completedAt: { type: Date },
-        lastAccessedAt: { type: Date, default: Date.now },
-        attempts: { type: Number, default: 0 },
-        bestScore: { type: Number, min: 0, max: 100 }
-      }
-    ],
-
     learningStats: {
+      totalLessonsCompleted: { type: Number, default: 0 },
+      totalWordsLearned: { type: Number, default: 0 },
       currentStreak: { type: Number, default: 0 },
       longestStreak: { type: Number, default: 0 },
       totalStudyDays: { type: Number, default: 0 },
-      averageSessionTime: { type: Number, default: 0 },
-      lastStudyDate: { type: Date }
+      lastStudyDate: { type: Date, default: null },
+      totalTimeSpent: { type: Number, default: 0 }
     }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: 'user_progress'
+  }
 )
 
 // Indexes
-userProgressSchema.index({ user: 1, course: 1 }, { unique: true })
-userProgressSchema.index({ user: 1 })
-userProgressSchema.index({ course: 1 })
-userProgressSchema.index({ 'lessonProgress.lesson': 1 })
-userProgressSchema.index({ 'overallProgress.completionPercentage': -1 })
+userProgressSchema.index({ userId: 1 }, { unique: true })
+userProgressSchema.index({ 'vocabularyProgress.lessonId': 1 })
+userProgressSchema.index({ 'learningStats.totalLessonsCompleted': -1 })
 
-// Methods để update progress
-userProgressSchema.methods.updateOverallProgress = function () {
-  const totalCompleted = this.lessonProgress.filter((lp: any) => lp.status === 'completed').length
-  this.overallProgress.completedLessons = totalCompleted
-  this.overallProgress.totalLessons = this.lessonProgress.length
-  this.overallProgress.completionPercentage =
-    this.overallProgress.totalLessons > 0 ? Math.round((totalCompleted / this.overallProgress.totalLessons) * 100) : 0
+// Instance methods
+userProgressSchema.methods.updateLessonProgress = async function (
+  this: UserProgressDocument,
+  lessonId: number,
+  lessonTitle: string,
+  quizScore: number,
+  totalQuestions: number,
+  totalWords: number
+) {
+  const percentage = Math.round((quizScore / totalQuestions) * 100)
+  const completed = percentage >= 80 || quizScore >= 5
 
+  const lessonIndex = this.vocabularyProgress.findIndex((vp) => vp.lessonId === lessonId)
+
+  const quizResult: IQuizResult = {
+    score: quizScore,
+    totalQuestions,
+    percentage,
+    completedAt: new Date()
+  }
+
+  if (lessonIndex >= 0) {
+    this.vocabularyProgress[lessonIndex].progress = Math.max(this.vocabularyProgress[lessonIndex].progress, percentage)
+    this.vocabularyProgress[lessonIndex].completed = completed
+    this.vocabularyProgress[lessonIndex].lastAccessedAt = new Date()
+    this.vocabularyProgress[lessonIndex].quizResults.push(quizResult)
+  } else {
+    this.vocabularyProgress.push({
+      lessonId,
+      lessonTitle,
+      progress: percentage,
+      completed,
+      unlocked: true,
+      totalWords,
+      quizResults: [quizResult],
+      lastAccessedAt: new Date(),
+      timeSpent: 0
+    })
+  }
+
+  if (completed) {
+    const nextLessonIndex = this.vocabularyProgress.findIndex((vp) => vp.lessonId === lessonId + 1)
+    if (nextLessonIndex >= 0) {
+      this.vocabularyProgress[nextLessonIndex].unlocked = true
+    }
+
+    this.learningStats.totalLessonsCompleted = this.vocabularyProgress.filter((vp) => vp.completed).length
+    this.learningStats.totalWordsLearned = this.vocabularyProgress.reduce(
+      (sum, vp) => sum + (vp.completed ? vp.totalWords : 0),
+      0
+    )
+  }
+
+  this.updateStreak()
   return this.save()
 }
 
-export const UserProgress: Model<IUserProgress> = mongoose.model<IUserProgress>('UserProgress', userProgressSchema)
+userProgressSchema.methods.updateStreak = function (this: UserProgressDocument) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  if (this.learningStats.lastStudyDate) {
+    const lastStudy = new Date(this.learningStats.lastStudyDate)
+    lastStudy.setHours(0, 0, 0, 0)
+
+    const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) {
+      return
+    } else if (diffDays === 1) {
+      this.learningStats.currentStreak += 1
+      this.learningStats.totalStudyDays += 1
+    } else {
+      this.learningStats.currentStreak = 1
+      this.learningStats.totalStudyDays += 1
+    }
+  } else {
+    this.learningStats.currentStreak = 1
+    this.learningStats.totalStudyDays = 1
+  }
+
+  if (this.learningStats.currentStreak > this.learningStats.longestStreak) {
+    this.learningStats.longestStreak = this.learningStats.currentStreak
+  }
+
+  this.learningStats.lastStudyDate = today
+}
+
+userProgressSchema.methods.getLessonProgress = function (this: UserProgressDocument, lessonId: number) {
+  return this.vocabularyProgress.find((vp) => vp.lessonId === lessonId)
+}
+
+userProgressSchema.methods.getUnlockedLessons = function (this: UserProgressDocument) {
+  return this.vocabularyProgress.filter((vp) => vp.unlocked)
+}
+
+// Static method
+userProgressSchema.statics.initializeUserProgress = async function (
+  this: IUserProgressModel,
+  userId: string,
+  totalLessons: number = 50
+) {
+  const existingProgress = await this.findOne({ userId })
+  if (existingProgress) {
+    return existingProgress
+  }
+
+  const vocabularyProgress: IVocabularyProgress[] = []
+  for (let i = 1; i <= totalLessons; i++) {
+    vocabularyProgress.push({
+      lessonId: i,
+      lessonTitle: `Lesson ${i}`,
+      progress: 0,
+      completed: false,
+      unlocked: i === 1,
+      totalWords: 0,
+      quizResults: [],
+      lastAccessedAt: new Date(),
+      timeSpent: 0
+    })
+  }
+
+  const newProgress = new this({
+    userId,
+    vocabularyProgress,
+    learningStats: {
+      totalLessonsCompleted: 0,
+      totalWordsLearned: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      totalStudyDays: 0,
+      lastStudyDate: null,
+      totalTimeSpent: 0
+    }
+  })
+
+  return newProgress.save()
+}
+
+export const UserProgress = mongoose.model<IUserProgress, IUserProgressModel>('UserProgress', userProgressSchema)
 
 export default UserProgress
