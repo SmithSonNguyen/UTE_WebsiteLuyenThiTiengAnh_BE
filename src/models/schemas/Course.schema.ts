@@ -36,6 +36,12 @@ export interface ICourse extends Document {
     downloadable?: boolean // Có thể tải về không
     certificate?: boolean // Có cấp chứng chỉ không
     description?: string // Mô tả thêm, ví dụ: "10 chủ đề, 54 bài học"
+    videoLessons?: {
+      title: string
+      url: string
+      duration?: string
+      order?: number
+    }[]
   }
 
   instructor?: mongoose.Types.ObjectId // for pre-recorded courses
@@ -99,7 +105,15 @@ const courseSchema: Schema<ICourse> = new Schema(
         },
         downloadable: { type: Boolean, default: false },
         certificate: { type: Boolean, default: false },
-        description: { type: String }
+        description: { type: String },
+        videoLessons: [
+          {
+            title: { type: String, required: true },
+            url: { type: String, required: true },
+            duration: { type: String },
+            order: { type: Number }
+          }
+        ]
       },
       required: function (this: ICourse) {
         return this.type === 'pre-recorded'

@@ -66,7 +66,7 @@ usersRouter.post('/logout', accessTokenValidator, wrapRequestHandler(logoutContr
  */
 usersRouter.get(
   '/upload-signature',
-  authUser(['registered', 'paid', 'free', 'admin', 'instructor']),
+  // authUser(['registered', 'paid', 'free', 'admin', 'instructor']),
   accessTokenValidator,
   wrapRequestHandler(getUploadSignatureController)
 )
@@ -81,7 +81,7 @@ usersRouter.get(
  */
 usersRouter.put(
   '/update-profile',
-  authUser(['registered', 'paid', 'free', 'admin', 'instructor']),
+  // authUser(['registered', 'paid', 'free', 'admin', 'instructor']),
   accessTokenValidator,
   updateProfileValidator,
   wrapRequestHandler(updateProfileController)
