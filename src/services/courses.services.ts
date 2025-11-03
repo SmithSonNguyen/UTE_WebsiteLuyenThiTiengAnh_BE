@@ -121,9 +121,16 @@ class CoursesService {
       const totalPreviewLessons = lessons.filter((l) => l.isPreview).length
       const totalDuration = lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0)
 
+      // ===== PHẦN MỚI THÊM: Lấy videoLessons từ preRecordedContent =====
+      const videoLessons = course.preRecordedContent?.videoLessons
+        ? [...course.preRecordedContent.videoLessons].sort((a, b) => (a.order || 0) - (b.order || 0))
+        : []
+      // ===== HẾT PHẦN MỚI =====
+
       return {
         ...course,
         curriculum,
+        videoLessons, // <-- CHỈ THÊM DÒNG NÀY
         stats: {
           totalTopics: topics.length,
           totalLessons,
@@ -138,6 +145,7 @@ class CoursesService {
     return {
       ...course,
       curriculum: [],
+      videoLessons: [], // <-- CHỈ THÊM DÒNG NÀY
       stats: {
         totalTopics: 0,
         totalLessons: 0,
