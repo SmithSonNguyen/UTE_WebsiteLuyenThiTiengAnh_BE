@@ -4,6 +4,7 @@ import Lesson from '~/models/schemas/Lesson.schema'
 import { ICourse } from '~/models/schemas/Course.schema'
 import mongoose from 'mongoose'
 import { response } from 'express'
+import Enrollment from '~/models/schemas/Enrollment.schema'
 
 class CoursesService {
   async getFeaturedCourses(): Promise<ICourse[]> {

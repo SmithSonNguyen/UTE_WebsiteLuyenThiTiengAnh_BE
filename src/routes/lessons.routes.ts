@@ -16,6 +16,15 @@ import {
   resetProgress
 } from '~/controllers/userprogress.controllers'
 
+// Import user vocabulary controllers
+import {
+  saveUserVocabularyController,
+  getUserVocabulariesController,
+  deleteUserVocabularyController,
+  toggleFavoriteController,
+  updateReviewCountController,
+  getUserVocabularyStatsController
+} from '~/controllers/userVocabulary.controllers'
 const lessonsRouter = Router()
 
 // ==========================================
@@ -68,4 +77,41 @@ lessonsRouter.patch('/progress/lessons/:lessonId/time', accessTokenValidator, wr
 // DELETE /lessons/progress/reset
 lessonsRouter.delete('/progress/reset', accessTokenValidator, wrapRequestHandler(resetProgress))
 
+// POST: Lưu từ vựng sau khi dịch
+// POST /lessons/my-vocabulary
+// Body: { word, explanation, sourceLanguage?, contextExample?, tags? }
+lessonsRouter.post('/my-vocabulary', accessTokenValidator, wrapRequestHandler(saveUserVocabularyController))
+
+// GET: Lấy danh sách từ vựng đã lưu của user
+// GET /lessons/my-vocabulary
+// Query: ?page=1&limit=20&search=hello&tags=common,important&isFavorite=true&sortBy=createdAt&sortOrder=desc
+lessonsRouter.get('/my-vocabulary', accessTokenValidator, wrapRequestHandler(getUserVocabulariesController))
+
+// GET: Lấy thống kê từ vựng của user
+// GET /lessons/my-vocabulary/stats
+lessonsRouter.get('/my-vocabulary/stats', accessTokenValidator, wrapRequestHandler(getUserVocabularyStatsController))
+
+// DELETE: Xóa từ vựng
+// DELETE /lessons/my-vocabulary/:vocabularyId
+lessonsRouter.delete(
+  '/my-vocabulary/:vocabularyId',
+  accessTokenValidator,
+  wrapRequestHandler(deleteUserVocabularyController)
+)
+
+// PATCH: Toggle favorite status
+// PATCH /lessons/my-vocabulary/:vocabularyId/favorite
+lessonsRouter.patch(
+  '/my-vocabulary/:vocabularyId/favorite',
+  accessTokenValidator,
+  wrapRequestHandler(toggleFavoriteController)
+)
+
+// PATCH: Cập nhật review count
+// PATCH /lessons/my-vocabulary/:vocabularyId/review
+lessonsRouter.patch(
+  '/my-vocabulary/:vocabularyId/review',
+  accessTokenValidator,
+  wrapRequestHandler(updateReviewCountController)
+)
 export default lessonsRouter
