@@ -7,6 +7,59 @@ import { response } from 'express'
 import Enrollment from '~/models/schemas/Enrollment.schema'
 
 class CoursesService {
+  // Lấy tất cả khóa học với filter và pagination
+  async getAllCourses(options: {
+    page?: number
+    limit?: number
+    type?: 'pre-recorded' | 'live-meet'
+    level?: 'beginner' | 'intermediate' | 'advanced'
+    status?: 'active' | 'inactive' | 'draft'
+  }) {
+    try {
+      const { page = 1, limit = 12, type, level, status = 'active' } = options
+      const skip = (page - 1) * limit
+
+      // Build filter query
+      interface FilterQuery {
+        status: string
+        type?: string
+        level?: string
+      }
+
+      const filter: FilterQuery = { status }
+      if (type) filter.type = type
+      if (level) filter.level = level
+
+      // Execute query with pagination
+      const [courses, total] = await Promise.all([
+        Course.find(filter)
+          .select(
+            '_id title description type price discountPrice discountPercent level targetScoreRange rating studentsCount features courseStructure preRecordedContent thumbnail'
+          )
+          .sort({ createdAt: -1 }) // Mới nhất trước
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Course.countDocuments(filter)
+      ])
+
+      return {
+        courses,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: limit,
+          hasNextPage: page < Math.ceil(total / limit),
+          hasPrevPage: page > 1
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching all courses:', error)
+      throw new Error('Failed to fetch courses')
+    }
+  }
+
   async getFeaturedCourses(): Promise<ICourse[]> {
     try {
       // Sử dụng aggregate để tính tie-breaker: rating.average * studentsCount

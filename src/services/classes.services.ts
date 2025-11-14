@@ -339,6 +339,38 @@ class ClassService {
       throw new Error(`Cập nhật link lớp học thất bại: ${(error as Error).message}`)
     }
   }
+
+  // Lấy tất cả lịch khai giảng cho các khóa học live-meet
+  async getAllUpcomingLiveClasses() {
+    try {
+      const currentDate = new Date()
+
+      const upcomingClasses = await Class.find({
+        status: { $in: ['scheduled', 'ongoing'] },
+        'schedule.startDate': { $gte: currentDate }
+      })
+        .populate([
+          {
+            path: 'courseId',
+            select: 'title level description type price targetScoreRange',
+            match: { type: 'live-meet' } // Chỉ lấy live-meet courses
+          },
+          {
+            path: 'instructor',
+            select: 'profile.firstname profile.lastname profile.email'
+          }
+        ])
+        .sort({ 'schedule.startDate': 1 })
+        .lean()
+
+      // Filter out classes where courseId is null (not live-meet)
+      const liveClasses = upcomingClasses.filter((classItem) => classItem.courseId !== null)
+
+      return liveClasses
+    } catch (error) {
+      throw new Error(`Lấy lịch khai giảng thất bại: ${(error as Error).message}`)
+    }
+  }
 }
 
 const classService = new ClassService()
