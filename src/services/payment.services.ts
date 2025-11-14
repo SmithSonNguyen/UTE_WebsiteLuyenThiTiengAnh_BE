@@ -335,7 +335,7 @@ class PaymentService {
 
         // Tạo enrollment record
         const enrollment = await Enrollment.create([enrollmentData], { session })
-        payment.enrollmentId = enrollment[0]._id
+        payment.enrollmentId = enrollment[0]._id as mongoose.Types.ObjectId
 
         console.log('🎓 Enrollment created:', {
           enrollmentId: enrollment[0]._id,
