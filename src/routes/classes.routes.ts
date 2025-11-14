@@ -11,13 +11,21 @@ import {
   getNextClassCodeController,
   getUpcomingClassesByCourseController,
   getUpcomingClassesByLevelController,
-  updateClassLinkController
+  updateClassLinkController,
+  getAllUpcomingLiveClassesController
 } from '~/controllers/classes.controllers'
 import { accessTokenValidator } from '~/middlewares/users.middlewares'
 import { requireEnrollment } from '~/middlewares/enrollments.middlewares'
 import { requireInstructor } from '~/middlewares/instructors.middlewares'
 
 const classesRouter = Router()
+
+/**
+ * Description: Get all upcoming live classes (public endpoint for schedule page)
+ * Path: /classes/schedule/upcoming
+ * Method: GET
+ */
+classesRouter.get('/schedule/upcoming', getAllUpcomingLiveClassesController)
 
 classesRouter.use(accessTokenValidator)
 

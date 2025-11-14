@@ -250,3 +250,23 @@ export const updateClassLinkController = async (req: Request, res: Response) => 
     })
   }
 }
+
+// Lấy tất cả lịch khai giảng cho các khóa học live-meet
+export const getAllUpcomingLiveClassesController = async (req: Request, res: Response) => {
+  try {
+    const liveClasses = await classService.getAllUpcomingLiveClasses()
+
+    return res.status(HTTP_STATUS.OK).json({
+      message: 'Lấy lịch khai giảng thành công',
+      result: {
+        classes: liveClasses,
+        count: liveClasses.length
+      }
+    })
+  } catch (error) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      message: 'Lấy lịch khai giảng thất bại',
+      error: (error as Error).message
+    })
+  }
+}
