@@ -4,6 +4,7 @@ import { enrollmentsService } from '~/services/enrollments.services' // Adjust p
 import { ErrorWithStatus } from '~/models/Errors'
 import HTTP_STATUS from '~/constants/httpStatus'
 import mongoose from 'mongoose'
+
 export const getMySchedule = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.decoded_authorization) {
@@ -14,10 +15,9 @@ export const getMySchedule = async (req: Request, res: Response, next: NextFunct
         })
       )
     }
-    const userId = new mongoose.Types.ObjectId(req.decoded_authorization.user_id)
-    const period = (req.query.period as string) || 'all'
+    const studentId = new mongoose.Types.ObjectId(req.decoded_authorization.user_id)
 
-    const enrollments = await enrollmentsService.getMySchedule(userId, period)
+    const enrollments = await enrollmentsService.getMySchedule(studentId)
 
     res.json(enrollments)
   } catch (error) {

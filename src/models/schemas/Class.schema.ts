@@ -27,6 +27,8 @@ export interface IClass extends Document {
 interface IClassModel extends Model<IClass> {
   findByLevel(level: 'beginner' | 'intermediate' | 'advanced'): Promise<IClass[]>
   getNextClassCode(courseLevel: 'beginner' | 'intermediate' | 'advanced'): Promise<string>
+  getDetailedScheduleForStudent(classId: mongoose.Types.ObjectId, studentId: mongoose.Types.ObjectId): Promise<any>
+  getSessionNumberByDate(classId: mongoose.Types.ObjectId, sessionDateStr: string): Promise<number>
 }
 
 const classSchema: Schema<IClass> = new Schema(
@@ -174,6 +176,257 @@ classSchema.statics.getNextClassCode = async function (courseLevel: 'beginner' |
   }
 
   return `${prefix}${nextNumber.toString().padStart(3, '0')}`
+}
+
+// Static method cập nhật: Lấy thời khóa biểu chi tiết cho một học viên trong lớp
+classSchema.statics.getDetailedScheduleForStudent = async function (
+  classId: mongoose.Types.ObjectId,
+  studentId: mongoose.Types.ObjectId
+): Promise<any> {
+  try {
+    const cls = await this.findById(classId)
+      .populate('courseId', '_id title level description') // Populate tên course và level
+      .populate('instructor', 'instructorInfo profile') // Populate tên và email giảng viên
+
+    if (!cls || !['scheduled', 'ongoing'].includes(cls.status)) {
+      throw new Error('Class không tồn tại hoặc không hoạt động')
+    }
+
+    // Lấy enrollment của student cho class này (để confirm enrolled)
+    const Enrollment = mongoose.model('Enrollment')
+    const enrollment = await Enrollment.findOne({
+      studentId,
+      classId: cls._id,
+      status: 'enrolled'
+    })
+
+    if (!enrollment) {
+      throw new Error('Student chưa đăng ký class này')
+    }
+
+    // Lấy attendance records của student (từ Attendance collection)
+    const Attendance = mongoose.model('Attendance')
+    const studentAttendances = await Attendance.aggregate([
+      { $match: { classId: cls._id } },
+      { $unwind: '$records' },
+      { $match: { 'records.studentId': studentId } },
+      {
+        $project: {
+          sessionNumber: 1,
+          sessionDate: 1,
+          isPresent: '$records.isPresent',
+          notes: '$records.notes' // Optional: Để hiển thị notes nếu có
+        }
+      }
+    ])
+
+    // Map để tra cứu nhanh: sessionNumber -> {isPresent, notes}
+    const attendanceMap = new Map<number, { isPresent: boolean; notes?: string }>()
+    studentAttendances.forEach((att) => {
+      attendanceMap.set(att.sessionNumber, { isPresent: att.isPresent, notes: att.notes })
+    })
+    // Format thời khóa biểu chi tiết
+    const { schedule } = cls
+    const { days, startTime, endTime, startDate, endDate: originalEndDate, durationWeeks } = schedule
+    const daysVN = (cls as any).schedule.daysVN // Sử dụng virtual daysVN cho tên ngày tiếng Việt
+
+    // Tính endDate nếu chưa có
+    let effectiveEndDate = originalEndDate
+    if (!effectiveEndDate && durationWeeks) {
+      effectiveEndDate = new Date(startDate)
+      effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
+    }
+    if (!effectiveEndDate) {
+      throw new Error(`Không thể xác định endDate cho class ${cls.classCode}`)
+    }
+
+    // Map ngày tiếng Anh sang index
+    const dayIndexMap: Record<string, number> = {
+      Sunday: 0,
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6
+    }
+
+    // Generate sessions
+    const sessions: any[] = []
+    // Tìm ngày đầu tiên của tuần chứa startDate (để làm reference)
+    const weekStart = new Date(startDate)
+    weekStart.setDate(startDate.getDate() - startDate.getDay()) // Đặt về Sunday của tuần (JS getDay() Sunday=0)
+
+    // Loop qua từng tuần cho đến endDate
+    while (weekStart <= effectiveEndDate) {
+      // Với mỗi tuần, tính ngày cho từng target day trong 'days'
+      days.forEach((day: string, dayIndex: number) => {
+        const targetDayOffset = dayIndexMap[day]
+        const sessionDate = new Date(weekStart)
+        sessionDate.setDate(weekStart.getDate() + targetDayOffset) // Thêm offset để đến ngày target
+
+        // Chỉ push nếu sessionDate >= startDate và <= endDate
+        if (sessionDate >= startDate && sessionDate <= effectiveEndDate) {
+          const dayVN = daysVN[dayIndex]
+          const dateStr = sessionDate.toLocaleDateString('vi-VN', {
+            day: 'numeric',
+            month: '2-digit',
+            year: 'numeric'
+          })
+          const dateLabel = `${dayVN} ngày ${dateStr}`
+
+          sessions.push({
+            dayVN,
+            fullDate: dateStr,
+            dateLabel,
+            isToday: sessionDate.toDateString() === new Date().toDateString()
+          })
+        }
+      })
+
+      // Chuyển sang tuần sau
+      weekStart.setDate(weekStart.getDate() + 7)
+    }
+
+    // Sắp xếp sessions theo ngày và thêm sessionNumber
+    sessions.sort(
+      (a, b) =>
+        new Date(a.fullDate.split('/').reverse().join('-')).getTime() -
+        new Date(b.fullDate.split('/').reverse().join('-')).getTime()
+    )
+    sessions.forEach((session, index) => {
+      session.sessionNumber = index + 1
+    })
+
+    // Cập nhật sessions với isAbsent và showMakeupButton (dựa trên attendanceMap)
+    sessions.forEach((session) => {
+      const sessionNum = session.sessionNumber
+      const attRecord = attendanceMap.get(sessionNum)
+      if (attRecord) {
+        session.isPresent = attRecord.isPresent
+        session.isAbsent = !attRecord.isPresent
+        session.attendanceNotes = attRecord.notes || null
+      } else {
+        session.isAbsent = false // Chưa có record → chưa absent
+        session.isPresent = null // Unknown
+      }
+      const sessionDate = new Date(session.fullDate.split('/').reverse().join('-'))
+      session.showMakeupButton = session.isAbsent && sessionDate < new Date() // Chỉ show nút nếu past và absent
+    })
+    // Format dates cho classInfo
+    const startDateStr = startDate.toLocaleDateString('vi-VN')
+    const effectiveEndDateStr = effectiveEndDate.toLocaleDateString('vi-VN')
+
+    // Info chung cho class (trả về 1 object)
+    const classInfo = {
+      classCode: cls.classCode,
+      classId: cls.classId,
+      courseId: cls.courseId,
+      instructor: cls.instructor,
+      time: `${startTime} - ${endTime}`,
+      startTime,
+      endTime,
+      daysVN,
+      startDate: startDateStr,
+      endDate: effectiveEndDateStr,
+      sessionAttended: enrollment.progress.sessionsAttended,
+      totalSessions: sessions.length,
+      meetLink: schedule.meetLink,
+      capacity: `${cls.capacity.currentStudents}/${cls.capacity.maxStudents}`,
+      status: cls.status,
+      sessions // Có thêm isAbsent, showMakeupButton, isPresent, attendanceNotes
+    }
+
+    return classInfo
+  } catch (error) {
+    throw new Error(`Lỗi khi lấy thời khóa biểu chi tiết: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+// Thêm vào Class model (models/Class.ts) - Static method để tính sessionNumber từ sessionDate
+classSchema.statics.getSessionNumberByDate = async function (
+  classId: mongoose.Types.ObjectId,
+  sessionDateStr: string // Input: 'YYYY-MM-DD' (e.g., '2025-10-20')
+): Promise<number> {
+  try {
+    // Lấy class để lấy schedule
+    const cls = await this.findById(classId).select('schedule')
+    if (!cls) {
+      throw new Error('Class không tồn tại')
+    }
+
+    const { schedule } = cls
+    const { days, startDate, endDate: originalEndDate, durationWeeks } = schedule
+    const daysVN = (cls as any).schedule.daysVN // Virtual, không dùng ở đây
+
+    // Tính effectiveEndDate
+    let effectiveEndDate = originalEndDate
+    if (!effectiveEndDate && durationWeeks) {
+      effectiveEndDate = new Date(startDate)
+      effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
+    }
+    if (!effectiveEndDate) {
+      throw new Error('Không thể xác định endDate cho class')
+    }
+
+    // Parse sessionDateStr thành Date
+    const [year, month, day] = sessionDateStr.split('-').map(Number)
+    const targetDate = new Date(year, month - 1, day)
+    if (targetDate < startDate || targetDate > effectiveEndDate) {
+      throw new Error('Ngày không nằm trong lịch lớp học')
+    }
+
+    // Map ngày tiếng Anh sang index (0=Sunday, 1=Monday, ...)
+    const dayIndexMap: Record<string, number> = {
+      Sunday: 0,
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6
+    }
+
+    // Generate tất cả sessions (giống logic trước, nhưng không cần attendance)
+    const sessions: any[] = []
+    const weekStart = new Date(startDate)
+    weekStart.setDate(startDate.getDate() - startDate.getDay()) // Sunday của tuần đầu
+
+    while (weekStart <= effectiveEndDate) {
+      days.forEach((day: string, dayIndex: number) => {
+        const targetDayOffset = dayIndexMap[day]
+        const sessionDate = new Date(weekStart)
+        sessionDate.setDate(weekStart.getDate() + targetDayOffset)
+
+        if (sessionDate >= startDate && sessionDate <= effectiveEndDate) {
+          const dateStr = sessionDate.toLocaleDateString('vi-VN', {
+            day: 'numeric',
+            month: '2-digit',
+            year: 'numeric'
+          })
+          const sessionDateKey = sessionDate.toISOString().split('T')[0] // 'YYYY-MM-DD'
+
+          sessions.push({
+            sessionDateKey,
+            dateStr,
+            sessionDate // Date object để sort
+          })
+        }
+      })
+      weekStart.setDate(weekStart.getDate() + 7)
+    }
+
+    // Sort theo thời gian và tìm index của targetDate (sessionNumber = index + 1)
+    sessions.sort((a, b) => a.sessionDate - b.sessionDate)
+    const targetIndex = sessions.findIndex((s) => s.sessionDateKey === sessionDateStr)
+    if (targetIndex === -1) {
+      throw new Error('Ngày không phải là ngày học hợp lệ')
+    }
+
+    return targetIndex + 1 // sessionNumber bắt đầu từ 1
+  } catch (error) {
+    throw new Error(`Lỗi tính sessionNumber: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 export const Class: IClassModel = mongoose.model<IClass, IClassModel>('Class', classSchema)
