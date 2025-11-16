@@ -1,4 +1,6 @@
-import mongoose, { Document, Schema, Model } from 'mongoose'
+import mongoose, { Document, Schema, Model, Types } from 'mongoose'
+import Enrollment from './Enrollment.schema'
+import MakeupRequest from './MakeupRequest.schema'
 
 export interface IClass extends Document {
   courseId: mongoose.Types.ObjectId
@@ -29,6 +31,22 @@ interface IClassModel extends Model<IClass> {
   getNextClassCode(courseLevel: 'beginner' | 'intermediate' | 'advanced'): Promise<string>
   getDetailedScheduleForStudent(classId: mongoose.Types.ObjectId, studentId: mongoose.Types.ObjectId): Promise<any>
   getSessionNumberByDate(classId: mongoose.Types.ObjectId, sessionDateStr: string): Promise<number>
+  getAvailableMakeupSlotsForSession(
+    studentId: mongoose.Types.ObjectId,
+    originalClassId: mongoose.Types.ObjectId,
+    sessionNumber: number
+  ): Promise<{
+    slots: Array<{
+      classId: mongoose.Types.ObjectId
+      classCode: string
+      sessionNumber: number
+      date: Date
+      time: string
+      instructorId: mongoose.Types.ObjectId
+      instructorName?: string // Assuming User has 'name' field
+    }>
+    remainingChanges: number
+  }>
 }
 
 const classSchema: Schema<IClass> = new Schema(
@@ -320,7 +338,7 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
     // Info chung cho class (trả về 1 object)
     const classInfo = {
       classCode: cls.classCode,
-      classId: cls.classId,
+      classId: cls._id,
       courseId: cls.courseId,
       instructor: cls.instructor,
       time: `${startTime} - ${endTime}`,
@@ -426,6 +444,165 @@ classSchema.statics.getSessionNumberByDate = async function (
     return targetIndex + 1 // sessionNumber bắt đầu từ 1
   } catch (error) {
     throw new Error(`Lỗi tính sessionNumber: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+classSchema.statics.getAvailableMakeupSlotsForSession = async function (
+  studentId: mongoose.Types.ObjectId,
+  originalClassId: mongoose.Types.ObjectId,
+  sessionNumber: number
+) {
+  try {
+    const now = new Date() // Current date
+    // Step 1: Validate original class and get courseId
+    const originalClass = await this.findById(originalClassId)
+      .populate({
+        path: 'courseId',
+        select: '_id title level' // Minimal populate
+      })
+      .select('courseId schedule status')
+
+    if (!originalClass) {
+      throw new Error('Original class not found')
+    }
+
+    if (!['ongoing', 'scheduled'].includes(originalClass.status)) {
+      throw new Error('Original class is not active')
+    }
+
+    const courseId = originalClass.courseId._id
+
+    // Step 2: Get enrollment for the student in the original class
+    const enrollment = await Enrollment.findOne({
+      studentId,
+      classId: originalClassId,
+      status: 'enrolled'
+    }).select('makeupChangesCount')
+
+    if (!enrollment) {
+      throw new Error('Student is not enrolled in the original class')
+    }
+
+    // Step 3: Calculate remaining makeup changes
+    const existingMakeups = await MakeupRequest.countDocuments({
+      userId: studentId,
+      'originalSession.classId': originalClassId,
+      status: { $in: ['pending', 'confirmed'] }
+    })
+
+    const remainingChanges = Math.max(0, enrollment.makeupChangesCount - existingMakeups)
+
+    if (remainingChanges <= 0) {
+      return { slots: [], remainingChanges: 0 }
+    }
+
+    // Step 4: Find candidate classes (same course, different class, active, with available capacity)
+    const candidateClasses = await this.find({
+      _id: { $ne: originalClassId },
+      courseId,
+      status: { $in: ['ongoing', 'scheduled'] }
+    })
+      .populate('instructor', 'profile') // Assuming User schema has 'name' field for display
+      .select('classCode _id instructor schedule')
+
+    // Step 5: For each candidate class, compute the date for the matching sessionNumber
+    const slots: Array<{
+      classId: Types.ObjectId
+      classCode: string
+      sessionNumber: number
+      date: Date
+      time: string
+      instructorId: Types.ObjectId
+      instructorName?: string
+    }> = []
+
+    const dayIndexMap: Record<string, number> = {
+      Sunday: 0,
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6
+    }
+
+    for (const cls of candidateClasses) {
+      try {
+        const { schedule } = cls
+        const { days, startTime, endTime, startDate, endDate: originalEndDate, durationWeeks } = schedule
+
+        // Compute effectiveEndDate
+        let effectiveEndDate = originalEndDate
+        if (!effectiveEndDate && durationWeeks) {
+          effectiveEndDate = new Date(startDate)
+          effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
+        }
+        if (!effectiveEndDate) {
+          continue // Cannot determine end date
+        }
+
+        if (effectiveEndDate <= now) {
+          continue // Class has ended
+        }
+
+        // Generate sessions sequentially to find the date for exact sessionNumber
+        const weekStart = new Date(startDate)
+        weekStart.setDate(startDate.getDate() - startDate.getDay()) // Align to Sunday of start week
+
+        let currentSessionNum = 1
+        let targetDate: Date | null = null
+
+        while (weekStart <= effectiveEndDate) {
+          for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+            const day = days[dayIndex]
+            const targetDayOffset = dayIndexMap[day]
+            const sessionDate = new Date(weekStart)
+            sessionDate.setDate(weekStart.getDate() + targetDayOffset)
+
+            if (sessionDate >= startDate && sessionDate <= effectiveEndDate) {
+              if (currentSessionNum === sessionNumber) {
+                targetDate = new Date(sessionDate) // Clone date
+                break
+              }
+              currentSessionNum++
+            }
+          }
+
+          if (targetDate) {
+            break
+          }
+
+          // Move to next week
+          weekStart.setDate(weekStart.getDate() + 7)
+        }
+
+        if (!targetDate || targetDate <= now) {
+          continue // No matching session or it's in the past
+        }
+
+        // Valid slot found
+        const time = `${startTime} - ${endTime}`
+        slots.push({
+          classId: cls._id,
+          classCode: cls.classCode,
+          sessionNumber,
+          date: targetDate,
+          time,
+          instructorId: cls.instructor._id,
+          instructorName: (cls.instructor as any).profile.lastname + ' ' + (cls.instructor as any).profile.firstname // Safe access after populate
+        })
+      } catch (error) {
+        console.error(`Error processing class ${cls.classCode}:`, error)
+        // Skip this class
+      }
+    }
+
+    // Step 6: Sort slots by date (earliest first)
+    slots.sort((a, b) => a.date.getTime() - b.date.getTime())
+
+    return { slots, remainingChanges }
+  } catch (error) {
+    throw new Error(`Error fetching available makeup slots: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
