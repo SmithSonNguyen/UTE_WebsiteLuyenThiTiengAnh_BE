@@ -5,7 +5,7 @@ interface IOriginalSession {
   classId: mongoose.Types.ObjectId
   sessionNumber: number
   date: Date
-  attendanceId?: mongoose.Types.ObjectId
+  attendanceId: mongoose.Types.ObjectId
 }
 
 interface IMakeupSlot {
@@ -13,19 +13,15 @@ interface IMakeupSlot {
   sessionNumber: number
   date: Date
   time: string
-  instructorId: mongoose.Types.ObjectId
 }
 
 export interface IMakeupRequest extends Document {
   userId: mongoose.Types.ObjectId
   originalSession: IOriginalSession
   makeupSlot: IMakeupSlot
-  status: 'pending' | 'confirmed'
+  status: 'scheduled' | 'completed'
   registeredAt: Date
   confirmedAt?: Date
-  notes?: string
-  createdAt: Date
-  updatedAt: Date
 }
 
 const makeupRequestSchema: Schema<IMakeupRequest> = new Schema(
@@ -57,7 +53,7 @@ const makeupRequestSchema: Schema<IMakeupRequest> = new Schema(
         // ID của record điểm danh để update sau
         type: Schema.Types.ObjectId,
         ref: 'Attendance',
-        required: false
+        required: true
       }
     },
     // Buổi học bù được chọn
@@ -79,18 +75,13 @@ const makeupRequestSchema: Schema<IMakeupRequest> = new Schema(
       time: {
         type: String, // e.g., "18:00 - 20:00"
         required: true
-      },
-      instructorId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Instructor',
-        required: true
       }
     },
     // Trạng thái yêu cầu
     status: {
       type: String,
-      enum: ['pending', 'confirmed'],
-      default: 'pending'
+      enum: ['scheduled', 'completed'],
+      default: 'scheduled'
     },
     // Thời gian
     registeredAt: {
@@ -99,12 +90,6 @@ const makeupRequestSchema: Schema<IMakeupRequest> = new Schema(
     },
     confirmedAt: {
       type: Schema.Types.Date,
-      required: false
-    },
-    // Ghi chú thêm (tùy chọn)
-    notes: {
-      type: String,
-      maxlength: 500,
       required: false
     }
   },
@@ -117,12 +102,6 @@ const makeupRequestSchema: Schema<IMakeupRequest> = new Schema(
 makeupRequestSchema.index({ userId: 1, status: 1 })
 makeupRequestSchema.index({ 'originalSession.classId': 1, 'originalSession.sessionNumber': 1 })
 makeupRequestSchema.index({ 'makeupSlot.classId': 1, date: 1 })
-
-// Middleware để update updatedAt
-makeupRequestSchema.pre('save', function (next) {
-  this.updatedAt = new Date()
-  next()
-})
 
 // Type-safe model
 const MakeupRequest: Model<IMakeupRequest> = mongoose.model<IMakeupRequest>('MakeupRequest', makeupRequestSchema)

@@ -296,6 +296,7 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
           sessions.push({
             dayVN,
             fullDate: dateStr,
+            date: sessionDate,
             dateLabel,
             isToday: sessionDate.toDateString() === new Date().toDateString()
           })
@@ -348,7 +349,7 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
       startDate: startDateStr,
       endDate: effectiveEndDateStr,
       sessionAttended: enrollment.progress.sessionsAttended,
-      totalSessions: sessions.length,
+      totalSessions: enrollment.progress.totalSessions,
       meetLink: schedule.meetLink,
       capacity: `${cls.capacity.currentStudents}/${cls.capacity.maxStudents}`,
       status: cls.status,
@@ -487,7 +488,7 @@ classSchema.statics.getAvailableMakeupSlotsForSession = async function (
     const existingMakeups = await MakeupRequest.countDocuments({
       userId: studentId,
       'originalSession.classId': originalClassId,
-      status: { $in: ['pending', 'confirmed'] }
+      status: { $in: ['scheduled', 'completed'] }
     })
 
     const remainingChanges = Math.max(0, enrollment.makeupChangesCount - existingMakeups)
