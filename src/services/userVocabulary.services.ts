@@ -40,7 +40,7 @@ class UserVocabularyService {
       if (sourceLanguage) existingVocab.sourceLanguage = sourceLanguage
       if (contextExample) existingVocab.contextExample = contextExample
       if (tags && tags.length > 0) {
-        existingVocab.tags = Array.from(new Set([...existingVocab.tags, ...tags]))
+        existingVocab.tags = Array.from(new Set([...(existingVocab.tags ?? []), ...tags]))
       }
 
       await existingVocab.save()
