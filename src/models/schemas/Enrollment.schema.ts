@@ -11,6 +11,7 @@ export interface IEnrollment extends Document {
   courseId: mongoose.Types.ObjectId // For easier querying
   enrollmentDate: Date
   status: 'enrolled' | 'completed' | 'dropped' | 'pending'
+  makeupChangesCount: number
   progress: {
     sessionsAttended: number
     totalSessions: number
@@ -49,6 +50,7 @@ const enrollmentSchema: Schema<IEnrollment> = new Schema(
       enum: ['enrolled', 'completed', 'dropped', 'pending'],
       default: 'pending'
     },
+    makeupChangesCount: { type: Number, default: 3, min: 0, max: 3 },
     progress: {
       sessionsAttended: { type: Number, default: 0, min: 0 },
       totalSessions: { type: Number, required: true, min: 1 },
@@ -152,6 +154,57 @@ enrollmentSchema.pre('save', function (next) {
   }
   next()
 })
+
+// Post-save hook: Tự động cập nhật currentStudents trong Class dựa trên số enrollment 'enrolled'
+enrollmentSchema.post('save', async function (doc: IEnrollment) {
+  try {
+    const Class = mongoose.model('Class')
+
+    // Chỉ cập nhật nếu status được modified (tối ưu performance)
+    if (!doc.isModified('status')) {
+      return
+    }
+
+    // Đếm số enrollment active ('enrolled') cho class này
+    const activeEnrollmentsCount = await mongoose.model('Enrollment').countDocuments({
+      classId: doc.classId,
+      status: 'enrolled' // Chỉ count 'enrolled' (không count pending, dropped, completed)
+    })
+
+    // Cập nhật currentStudents trong Class
+    await Class.findByIdAndUpdate(
+      doc.classId,
+      { $set: { 'capacity.currentStudents': activeEnrollmentsCount } },
+      { new: true }
+    )
+  } catch (error) {
+    console.error('Lỗi khi cập nhật currentStudents:', error)
+    // Không throw để tránh break flow, nhưng log để debug
+  }
+})
+
+// Static method để sync thủ công currentStudents cho một class (nếu cần recalculate toàn bộ)
+enrollmentSchema.statics.syncCurrentStudentsForClass = async function (
+  classId: mongoose.Types.ObjectId
+): Promise<number> {
+  try {
+    const activeEnrollmentsCount = await this.countDocuments({
+      classId,
+      status: 'enrolled'
+    })
+
+    const Class = mongoose.model('Class')
+    await Class.findByIdAndUpdate(
+      classId,
+      { $set: { 'capacity.currentStudents': activeEnrollmentsCount } },
+      { new: true }
+    )
+
+    return activeEnrollmentsCount
+  } catch (error) {
+    throw new Error(`Lỗi khi sync currentStudents: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
 
 export const Enrollment: Model<IEnrollment> = mongoose.model<IEnrollment>('Enrollment', enrollmentSchema)
 

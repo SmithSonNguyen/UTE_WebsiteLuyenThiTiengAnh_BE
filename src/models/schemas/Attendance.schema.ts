@@ -11,6 +11,7 @@ export interface IAttendanceRecord {
 export interface IAttendance extends Document {
   classId: mongoose.Types.ObjectId
   sessionDate: Date
+  sessionNumber?: number
   instructorId: mongoose.Types.ObjectId
 
   records: IAttendanceRecord[]
@@ -63,6 +64,10 @@ const attendanceSchema: Schema<IAttendance> = new Schema(
     sessionDate: {
       type: Date,
       required: true
+    },
+    sessionNumber: {
+      type: Number,
+      min: 1
     },
     instructorId: {
       type: Schema.Types.ObjectId,

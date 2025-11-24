@@ -1,5 +1,5 @@
 // services/payment.services.ts
-import { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat, VerifyReturnUrl } from 'vnpay'
+import { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat, VerifyReturnUrl, HashAlgorithm } from 'vnpay'
 import Payment, { IPayment } from '~/models/schemas/Payment.schema'
 import Enrollment from '~/models/schemas/Enrollment.schema'
 import Class from '~/models/schemas/Class.schema'
@@ -15,7 +15,7 @@ class PaymentService {
       secureSecret: process.env.VNP_HASHSECRET as string,
       vnpayHost: 'https://sandbox.vnpayment.vn',
       testMode: true,
-      hashAlgorithm: 'SHA512',
+      hashAlgorithm: HashAlgorithm.SHA512,
       loggerFn: ignoreLogger
     })
   }
@@ -236,6 +236,7 @@ class PaymentService {
       // 3. Cập nhật payment với thông tin từ VNPay
       payment.vnpay = {
         ...payment.vnpay,
+        vnp_TxnRef: query.vnp_TxnRef as string, // thêm dòng này
         vnp_TransactionNo: vnp_TransactionNo as string,
         vnp_BankCode: vnp_BankCode as string,
         vnp_CardType: vnp_CardType as string,

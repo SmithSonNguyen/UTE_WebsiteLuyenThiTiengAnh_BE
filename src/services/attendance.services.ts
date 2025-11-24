@@ -140,12 +140,11 @@ class AttendanceService {
       }
 
       // Kiểm tra xem ngày được chọn có nằm trong lịch dạy của lớp không
-
       await this.validateClassSchedule(classId, sessionDate)
 
       // Tạo date object từ string YYYY-MM-DD ở UTC (đầu ngày)
       const [year, month, day] = sessionDate.split('-').map(Number)
-      const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)) // Fix: Sử dụng Date.UTC
+      const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
 
       const attendance = await Attendance.findOne({
         classId: new mongoose.Types.ObjectId(classId),
@@ -154,24 +153,33 @@ class AttendanceService {
 
       if (!attendance) {
         console.log('📝 [getAttendanceByDate] No existing attendance, creating new...')
+
+        // ✅ FIX: Tính sessionNumber TRƯỚC KHI tạo attendance
+        const ClassModel = mongoose.model('Class') as any
+        const sessionNumber = await ClassModel.getSessionNumberByDate(new mongoose.Types.ObjectId(classId), sessionDate)
+
+        console.log('📊 [getAttendanceByDate] Calculated sessionNumber:', sessionNumber)
+
         // Nếu chưa có điểm danh cho ngày này, tạo mới với danh sách sinh viên
         const { students } = await this.getClassStudents(classId)
 
         const newAttendance = new Attendance({
           classId: new mongoose.Types.ObjectId(classId),
+          sessionNumber, // ✅ THÊM sessionNumber vào đây
           sessionDate: date,
           instructorId: new mongoose.Types.ObjectId(instructorId),
           records: students.map((student) => ({
             studentId: student._id,
             isPresent: false,
             note: '',
-            markedAt: new Date(), // Giữ nguyên: markedAt dùng thời gian hiện tại local/UTC tùy server
+            markedAt: new Date(),
             markedBy: new mongoose.Types.ObjectId(instructorId)
           })),
           status: 'draft'
         })
 
         await newAttendance.save()
+        console.log('✅ [getAttendanceByDate] Created new attendance with sessionNumber:', newAttendance.sessionNumber)
 
         return newAttendance
       }
@@ -182,10 +190,10 @@ class AttendanceService {
     }
   }
 
-  // Lưu điểm danh
+  // Lưu điểm danh (cập nhật với sessionNumber)
   async saveAttendance(
     classId: string,
-    sessionDate: string,
+    sessionDate: string, // 'YYYY-MM-DD'
     instructorId: string,
     attendanceData: Array<{
       studentId: string
@@ -199,8 +207,14 @@ class AttendanceService {
       }
 
       // Kiểm tra xem ngày được chọn có nằm trong lịch dạy của lớp không
-
       await this.validateClassSchedule(classId, sessionDate)
+
+      // FIXED: Tính sessionNumber trước khi tạo attendance
+      const ClassModel = mongoose.model('Class') as any
+      const sessionNumber = await ClassModel.getSessionNumberByDate(
+        new mongoose.Types.ObjectId(classId),
+        sessionDate // 'YYYY-MM-DD'
+      )
 
       // Tạo date object từ string YYYY-MM-DD ở UTC (đầu ngày)
       const [year, month, day] = sessionDate.split('-').map(Number)
@@ -212,14 +226,20 @@ class AttendanceService {
         sessionDate: date
       })
 
+      console.log('📝 [saveAttendance] Session Number:', sessionNumber)
+
       if (!attendance) {
         attendance = new Attendance({
           classId: new mongoose.Types.ObjectId(classId),
+          sessionNumber, // FIXED: Set sessionNumber tính từ hàm
           sessionDate: date,
           instructorId: new mongoose.Types.ObjectId(instructorId),
           records: [],
           status: 'draft'
         })
+      } else {
+        // Nếu update existing, cũng set sessionNumber nếu chưa có
+        attendance.sessionNumber = sessionNumber
       }
 
       // Cập nhật records
