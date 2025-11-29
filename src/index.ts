@@ -18,6 +18,8 @@ import attendanceRouter from './routes/attendance.routes'
 import paymentRouter from './routes/payment.routes'
 import makeupRequestsRouter from './routes/makeuprequests.routes'
 
+import newsRouter from './routes/news.routes'
+import extractRouter from './routes/extract.routes'
 import adminRouter from '~/routes/admin.routes'
 dotenv.config()
 
@@ -71,6 +73,8 @@ app.use('/attendance', attendanceRouter)
 app.use('/admin', adminRouter)
 app.use('/payment', paymentRouter)
 app.use('/makeup-requests', makeupRequestsRouter)
+app.use('/news', newsRouter)
+app.use('/extract', extractRouter)
 
 databaseService.connect()
 
