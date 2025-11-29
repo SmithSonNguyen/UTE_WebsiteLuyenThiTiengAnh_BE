@@ -29,3 +29,27 @@ export const getMySchedule = async (req: Request, res: Response, next: NextFunct
     )
   }
 }
+
+export const getTodaySchedule = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.decoded_authorization) {
+      return next(
+        new ErrorWithStatus({
+          message: 'Unauthorized',
+          status: HTTP_STATUS.UNAUTHORIZED
+        })
+      )
+    }
+    const studentId = req.decoded_authorization.user_id
+
+    const todaySchedule = await enrollmentsService.getTodaySchedule(studentId)
+    res.json(todaySchedule)
+  } catch (error) {
+    next(
+      new ErrorWithStatus({
+        message: 'Lỗi khi lấy lịch học hôm nay',
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR
+      })
+    )
+  }
+}
