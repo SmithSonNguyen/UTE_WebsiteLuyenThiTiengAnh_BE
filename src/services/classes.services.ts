@@ -138,49 +138,66 @@ class ClassService {
       // Tính toán thông tin bổ sung cho lớp học
       const currentDate = new Date()
       const startDate = new Date(classDetail.schedule.startDate!)
-      const endDate = new Date(classDetail.schedule.endDate!)
+      const durationWeeks = classDetail.schedule.durationWeeks || 0
 
-      // Tính số buổi học
-      const totalWeeks = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
-      const totalSessions = totalWeeks * classDetail.schedule.days.length
+      // Tính ngày kết thúc
+      // Tính ngày kết thúc
+      let effectiveEndDate: Date
 
-      // Status của lớp học
-      let classStatus: 'scheduled' | 'ongoing' | 'completed' | 'cancelled' = classDetail.status
-      if (currentDate < startDate) {
-        classStatus = 'scheduled'
-      } else if (currentDate > endDate) {
-        classStatus = 'completed'
+      if (classDetail.schedule.endDate) {
+        // Nếu DB đã có endDate → dùng luôn
+        effectiveEndDate = new Date(classDetail.schedule.endDate)
       } else {
-        classStatus = 'ongoing'
+        // Nếu chưa có endDate → tính theo durationWeeks
+        effectiveEndDate = new Date(startDate)
+        effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
       }
 
+      // Ghi đè vào schedule trước khi return
+      classDetail.schedule.endDate = effectiveEndDate
+
+      // // Tính số buổi học
+      // const totalWeeks = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
+      // const totalSessions = totalWeeks * classDetail.schedule.days.length
+
+      // // Status của lớp học
+      // let classStatus: 'scheduled' | 'ongoing' | 'completed' | 'cancelled' = classDetail.status
+      // if (currentDate < startDate) {
+      //   classStatus = 'scheduled'
+      // } else if (currentDate > endDate) {
+      //   classStatus = 'completed'
+      // } else {
+      //   classStatus = 'ongoing'
+      // }
+
       // Tính số chỗ còn lại
-      const spotsLeft = classDetail.capacity.maxStudents - classDetail.capacity.currentStudents
+      // const spotsLeft = classDetail.capacity.maxStudents - classDetail.capacity.currentStudents
 
       return {
         ...classDetail,
+
         enrollment: enrollmentInfo,
-        hasAccess,
-        canEnroll: !enrollmentInfo && spotsLeft > 0 && currentDate < startDate,
-        status: {
-          sessionsAttended: enrollmentInfo?.progress.sessionsAttended || 0,
-          totalSessions,
-          totalWeeks,
-          spotsLeft,
-          progressPercent: enrollmentInfo
-            ? Math.round((enrollmentInfo.progress.sessionsAttended / enrollmentInfo.progress.totalSessions) * 100)
-            : 0
-        },
-        computedStatus: classStatus,
-        timeInfo: {
-          isUpcoming: currentDate < startDate,
-          isOngoing: currentDate >= startDate && currentDate <= endDate,
-          isCompleted: currentDate > endDate,
-          daysUntilStart:
-            currentDate < startDate
-              ? Math.ceil((startDate.getTime() - currentDate.getTime()) / (24 * 60 * 60 * 1000))
-              : 0
-        }
+        hasAccess
+        // canEnroll: !enrollmentInfo && spotsLeft > 0 && currentDate < startDate,
+        // status: {
+        //   sessionsAttended: enrollmentInfo?.progress.sessionsAttended || 0,
+        //   totalSessions,
+        //   totalWeeks,
+        //   spotsLeft,
+        //   progressPercent: enrollmentInfo
+        //     ? Math.round((enrollmentInfo.progress.sessionsAttended / enrollmentInfo.progress.totalSessions) * 100)
+        //     : 0
+        // },
+        // computedStatus: classStatus,
+        // timeInfo: {
+        //   isUpcoming: currentDate < startDate,
+        //   isOngoing: currentDate >= startDate && currentDate <= endDate,
+        //   isCompleted: currentDate > endDate,
+        //   daysUntilStart:
+        //     currentDate < startDate
+        //       ? Math.ceil((startDate.getTime() - currentDate.getTime()) / (24 * 60 * 60 * 1000))
+        //       : 0
+        // }
       }
     } catch (error) {
       throw new Error(`Lấy thông tin lớp học cho học viên thất bại: ${(error as Error).message}`)
