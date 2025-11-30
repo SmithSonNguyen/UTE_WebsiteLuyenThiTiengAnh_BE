@@ -7,7 +7,7 @@ export interface IAttendance {
 
 export interface IEnrollment extends Document {
   studentId: mongoose.Types.ObjectId
-  classId: mongoose.Types.ObjectId
+  classId?: mongoose.Types.ObjectId
   courseId: mongoose.Types.ObjectId // For easier querying
   enrollmentDate: Date
   status: 'enrolled' | 'completed' | 'dropped' | 'pending'
@@ -42,7 +42,7 @@ export interface IEnrollment extends Document {
 const enrollmentSchema: Schema<IEnrollment> = new Schema(
   {
     studentId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    classId: { type: Schema.Types.ObjectId, ref: 'Class', required: true },
+    classId: { type: Schema.Types.ObjectId, ref: 'Class', required: false },
     courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
     enrollmentDate: { type: Date, default: Date.now },
     status: {
