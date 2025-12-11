@@ -6,7 +6,7 @@ interface UserProfile {
   firstname: string
   email: string
   gender?: string
-  birthday: Date
+  birthday?: Date
   phone: string
   bio?: string
   avatar?: string
@@ -53,7 +53,7 @@ const UserSchema: Schema<IUser> = new Schema(
       firstname: { type: String, required: true },
       email: { type: String, required: true, unique: true },
       gender: { type: String, default: '' },
-      birthday: { type: Date, required: true },
+      birthday: { type: Date },
       phone: { type: String, default: '', match: [/^\+?[0-9]\d{1,14}$/, 'is not a valid phone number'] },
       bio: { type: String, default: '' },
       avatar: {
@@ -87,9 +87,9 @@ const UserSchema: Schema<IUser> = new Schema(
   { timestamps: true }
 )
 
-// Middleware: tự động gán role theo purchasedCourses
 UserSchema.pre<IUser>('save', function (next) {
-  if (this.role !== 'guest') {
+  // Chỉ can thiệp vào các roles mà logic 'mua khóa học' áp dụng
+  if (this.role === 'registered' || this.role === 'paid' || this.role === 'free') {
     if (this.purchasedCourses && this.purchasedCourses.length > 0) {
       this.role = 'paid'
     } else {
