@@ -102,6 +102,17 @@ export const INSTRUCTOR_MESSAGES = {
   INSTRUCTOR_NOT_FOUND: 'Instructor not found'
 } as const
 
+export const ADMIN_MESSAGES = {
+  GET_OVERVIEW_DASHBOARD_SUCCESS: 'Get revenue overview success',
+  GET_INSTRUCTORS_SUCCESS: 'Get instructor success',
+  CREATE_INSTRUCTOR_SUCCESS: 'Create instructor success',
+  DELETE_INSTRUCTOR_SUCCESS: 'Delete instructor success',
+  ASSIGN_CLASS_SUCCESS: 'Assign instructor success',
+  GET_ALL_GUEST_USERS_SUCCESS: 'Get all guest success',
+  GET_USER_ENROLLMENTS_SUCCESS: 'Get user enrollments success',
+  DELETE_USER_SUCCESS: 'Delete user success'
+} as const
+
 export const ATTENDANCE_MESSAGES = {
   GET_STUDENTS_SUCCESS: 'Get class students successfully',
   GET_STUDENTS_FAILED: 'Failed to get class students',

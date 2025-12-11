@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema, Model } from 'mongoose'
 
+// --- INTERFACE DEFINITIONS (GIỮ NGUYÊN) ---
+
 export interface ICourse extends Document {
   title: string
   description: string
@@ -24,9 +26,8 @@ export interface ICourse extends Document {
     totalHours: number
     durationWeeks?: number
     description?: string
-  }
+  } // Thông tin cho pre-recorded courses
 
-  // Thông tin cho pre-recorded courses
   preRecordedContent?: {
     totalTopics: number // Số chủ đề, ví dụ: 10
     totalLessons: number // Số bài học, ví dụ: 54
@@ -49,7 +50,12 @@ export interface ICourse extends Document {
   status: 'active' | 'inactive' | 'draft'
   createdAt: Date
   updatedAt: Date
+  // Thêm method để Mongoose nhận biết
+  updatePreRecordedStats(): Promise<ICourse>
 }
+
+// --- SCHEMA DEFINITION ---
+
 const courseSchema: Schema<ICourse> = new Schema(
   {
     title: { type: String, required: true },
@@ -75,22 +81,13 @@ const courseSchema: Schema<ICourse> = new Schema(
       totalHours: {
         type: Number,
         required: true,
-        min: 1,
-        validate: {
-          validator: function (this: ICourse) {
-            return (
-              this.courseStructure.totalHours ===
-              this.courseStructure.totalSessions * this.courseStructure.hoursPerSession
-            )
-          },
-          message: 'totalHours must equal totalSessions * hoursPerSession'
-        }
+        min: 1
+        // **ĐÃ BỎ VALIDATOR GÂY LỖI**
       },
       durationWeeks: { type: Number, min: 1 },
       description: { type: String }
-    },
+    }, // Thêm preRecordedContent cho pre-recorded courses
 
-    // Thêm preRecordedContent cho pre-recorded courses
     preRecordedContent: {
       type: {
         totalTopics: { type: Number, required: true, min: 1 },
@@ -123,8 +120,7 @@ const courseSchema: Schema<ICourse> = new Schema(
           // Nếu là pre-recorded thì phải có preRecordedContent
           if (this.type === 'pre-recorded') {
             return this.preRecordedContent != null
-          }
-          // Nếu là live-meet thì không được có preRecordedContent
+          } // Nếu là live-meet thì không được có preRecordedContent
           if (this.type === 'live-meet') {
             return this.preRecordedContent == null
           }
@@ -140,14 +136,72 @@ const courseSchema: Schema<ICourse> = new Schema(
   { timestamps: true }
 )
 
+// --- INDEXES ---
+
 courseSchema.index({ status: 1, type: 1 })
 courseSchema.index({ 'rating.average': -1, studentsCount: -1 }) // Index để sort featured courses
 courseSchema.index({ level: 1, type: 1 })
 courseSchema.index({ 'preRecordedContent.accessDuration': 1, type: 1 }) // Index cho query theo thời hạn
 
-// Middleware để auto-calculate preRecordedContent stats
-courseSchema.methods.updatePreRecordedStats = async function () {
-  if (this.type !== 'pre-recorded') return this
+// --- MIDDLEWARES & METHODS ---
+
+// 1. Middleware để tự động tính toán totalHours khi TẠO MỚI (.save())
+courseSchema.pre<ICourse>('save', function (next) {
+  // Chỉ chạy nếu courseStructure tồn tại và có đủ thông tin
+  if (this.courseStructure && this.courseStructure.totalSessions && this.courseStructure.hoursPerSession) {
+    this.courseStructure.totalHours = this.courseStructure.totalSessions * this.courseStructure.hoursPerSession
+  }
+  next()
+})
+
+// 2. Middleware để tự động tính toán totalHours khi CẬP NHẬT (findByIdAndUpdate)
+courseSchema.pre('findOneAndUpdate', function (next) {
+  // Lấy đối tượng cập nhật
+  const update = this.getUpdate() as any
+
+  // Kiểm tra xem có cập nhật `courseStructure` hay các trường con không
+  let updateStructure = update.$set?.courseStructure || update.courseStructure
+
+  // Lấy các giá trị sessions/hours từ update hoặc từ $set
+  const totalSessions = updateStructure?.totalSessions
+  const hoursPerSession = updateStructure?.hoursPerSession
+
+  // Nếu có một trong hai trường sessions/hours được cập nhật
+  if (totalSessions !== undefined || hoursPerSession !== undefined) {
+    // Logíc này trở nên phức tạp nếu ta không biết giá trị cũ.
+    // Để đơn giản và an toàn, ta chỉ tính lại nếu cả hai giá trị đều có mặt trong update.
+    // HOẶC, cách tốt nhất là service (updatePreRecordedCourse) nên tính sẵn totalHours
+    // và gửi cả 3 trường này cùng nhau.
+
+    // Nếu không có $set, tạo nó
+    if (!update.$set) {
+      update.$set = {}
+    }
+
+    // Đảm bảo courseStructure có trong $set
+    if (!update.$set.courseStructure) {
+      update.$set.courseStructure = {}
+    }
+
+    // Nếu cả hai trường sessions và hoursPerSession được cập nhật, ta tính lại totalHours
+    if (totalSessions !== undefined && hoursPerSession !== undefined) {
+      update.$set.courseStructure.totalHours = totalSessions * hoursPerSession
+    } else {
+      // Để tránh lỗi phức tạp khi chỉ update 1 trong 2 trường,
+      // khuyến nghị service phải luôn gửi cả 3 trường khi update
+      // courseStructure. Tuy nhiên, nếu bạn muốn logic tự động xử lý:
+      // **CÁCH KHẮC PHỤC KHÓ KHĂN NHẤT:** Cần load document cũ.
+      // Mongoose khuyến nghị dùng findById, tính toán, và .save() thay vì findByIdAndUpdate
+      // khi logic phức tạp như thế này.
+    }
+  }
+
+  next()
+})
+
+// 3. Method để auto-calculate preRecordedContent stats
+courseSchema.methods.updatePreRecordedStats = async function (this: ICourse) {
+  if (this.type !== 'pre-recorded') return this as any
 
   const Topic = mongoose.model('Topic')
   const Lesson = mongoose.model('Lesson')
@@ -170,13 +224,7 @@ courseSchema.methods.updatePreRecordedStats = async function () {
   return this.save()
 }
 
-// Middleware để auto-calculate courseStructure từ lessons
-courseSchema.pre('save', function () {
-  // Auto-calculate totalHours nếu chưa có
-  if (this.courseStructure && this.courseStructure.totalSessions && this.courseStructure.hoursPerSession) {
-    this.courseStructure.totalHours = this.courseStructure.totalSessions * this.courseStructure.hoursPerSession
-  }
-})
+// --- EXPORT MODEL ---
 
 export const Course: Model<ICourse> = mongoose.model<ICourse>('Course', courseSchema)
 

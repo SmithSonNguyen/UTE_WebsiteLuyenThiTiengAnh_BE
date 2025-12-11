@@ -5,6 +5,7 @@ import { ICourse } from '~/models/schemas/Course.schema'
 import mongoose from 'mongoose'
 import { response } from 'express'
 import Enrollment from '~/models/schemas/Enrollment.schema'
+import Payment from '~/models/schemas/Payment.schema'
 
 class CoursesService {
   // Lấy tất cả khóa học với filter và pagination
@@ -338,6 +339,133 @@ class CoursesService {
       accessDuration: course.preRecordedContent?.accessDuration,
       accessDurationUnit: course.preRecordedContent?.accessDurationUnit,
       enrollment: enrollmentInfo
+    }
+  }
+
+  async getMyEnrolledCourses(userId: string) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        throw new Error('Invalid user ID')
+      }
+
+      // Bước 1: Lấy tất cả payments của user
+      // - status: completed (thanh toán thành công)
+      // - classId không tồn tại (chỉ lấy pre-recorded courses)
+      const userPayments = await Payment.find({
+        userId: new mongoose.Types.ObjectId(userId),
+        status: 'completed',
+        classId: { $exists: false } // Chỉ lấy những payment không có classId
+      })
+        .select('courseId amount completedAt enrollmentId')
+        .sort({ completedAt: -1 }) // Mới nhất trước
+        .lean()
+
+      if (!userPayments || userPayments.length === 0) {
+        return []
+      }
+
+      // Bước 2: Lấy danh sách courseId từ payments
+      const courseIds = userPayments.map((payment) => payment.courseId)
+
+      // Bước 3: Lấy thông tin chi tiết các courses từ bảng courses
+      const courses = await Course.find({
+        _id: { $in: courseIds }
+      })
+        .select(
+          '_id title description type price discountPrice discountPercent level targetScoreRange rating studentsCount thumbnail preRecordedContent'
+        )
+        .lean()
+
+      // Bước 4: Map courses với thông tin payment tương ứng
+      const enrolledCoursesWithPayment = courses.map((course) => {
+        const payment = userPayments.find((p) => p.courseId!.toString() === course._id.toString())
+
+        return {
+          ...course,
+          enrollmentInfo: {
+            paymentId: payment?._id,
+            enrollmentId: payment?.enrollmentId,
+            paidAmount: payment?.amount,
+            enrolledAt: payment?.completedAt,
+            accessDuration: course.preRecordedContent?.accessDuration,
+            accessDurationUnit: course.preRecordedContent?.accessDurationUnit
+          }
+        }
+      })
+
+      // Sắp xếp theo thời gian đăng ký (mới nhất trước)
+      enrolledCoursesWithPayment.sort((a, b) => {
+        const dateA = a.enrollmentInfo.enrolledAt ? new Date(a.enrollmentInfo.enrolledAt).getTime() : 0
+        const dateB = b.enrollmentInfo.enrolledAt ? new Date(b.enrollmentInfo.enrolledAt).getTime() : 0
+        return dateB - dateA
+      })
+
+      return enrolledCoursesWithPayment
+    } catch (error) {
+      console.error('Error fetching enrolled courses:', error)
+      throw new Error('Failed to fetch enrolled courses')
+    }
+  }
+
+  async checkUserCourseAccess(userId: any, courseId: string): Promise<boolean> {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+        return false
+      }
+
+      // Kiểm tra trong bảng payments
+      // - userId khớp
+      // - courseId khớp
+      // - status: completed (đã thanh toán thành công)
+      // - classId không tồn tại (chỉ pre-recorded courses)
+      const payment = await Payment.findOne({
+        userId: new mongoose.Types.ObjectId(userId),
+        courseId: new mongoose.Types.ObjectId(courseId),
+        status: 'completed',
+        classId: { $exists: false }
+      }).lean()
+
+      return !!payment // Trả về true nếu tìm thấy payment
+    } catch (error) {
+      console.error('Error checking course access:', error)
+      return false
+    }
+  }
+
+  // Method lấy thông tin khóa học với videoLessons cho user đã mua
+  async getEnrolledCourseById(courseId: string, userId: any) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(courseId)) {
+        throw new Error('Invalid course ID')
+      }
+
+      // Lấy thông tin course cơ bản
+      const course = await Course.findById(courseId)
+        .select('_id title description type level targetScoreRange rating studentsCount preRecordedContent thumbnail')
+        .lean()
+
+      if (!course) {
+        return null
+      }
+
+      // Chỉ trả về videoLessons nếu là pre-recorded course
+      if (course.type === 'pre-recorded' && course.preRecordedContent?.videoLessons) {
+        // Sắp xếp videoLessons theo order
+        const videoLessons = [...course.preRecordedContent.videoLessons].sort((a, b) => (a.order || 0) - (b.order || 0))
+
+        return {
+          ...course,
+          videoLessons
+        }
+      }
+
+      return {
+        ...course,
+        videoLessons: []
+      }
+    } catch (error) {
+      console.error('Error fetching enrolled course:', error)
+      throw new Error('Failed to fetch enrolled course')
     }
   }
 }

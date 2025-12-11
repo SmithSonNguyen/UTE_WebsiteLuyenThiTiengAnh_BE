@@ -2,9 +2,12 @@ import { Router } from 'express'
 import {
   getFeaturedCoursesController,
   getDetailedCoursesController,
-  getAllCoursesController
+  getAllCoursesController,
+  getMyEnrolledCoursesController,
+  getMyEnrolledCoursesVideoController
 } from '~/controllers/courses.controllers'
-
+import { accessTokenValidator } from '~/middlewares/users.middlewares'
+import { wrapRequestHandler } from '~/utils/handlers'
 const router = Router()
 export default router
 
@@ -17,4 +20,6 @@ export default router
 router.get('/', getAllCoursesController)
 
 router.get('/featured', getFeaturedCoursesController)
+router.get('/my-enrolled-courses', accessTokenValidator, wrapRequestHandler(getMyEnrolledCoursesController))
+router.get('/enrolled/:id', accessTokenValidator, wrapRequestHandler(getMyEnrolledCoursesVideoController))
 router.get('/:id', getDetailedCoursesController)

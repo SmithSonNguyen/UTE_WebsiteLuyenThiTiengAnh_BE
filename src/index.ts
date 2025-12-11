@@ -17,7 +17,6 @@ import instructorRouter from './routes/instructor.routes'
 import attendanceRouter from './routes/attendance.routes'
 import paymentRouter from './routes/payment.routes'
 import makeupRequestsRouter from './routes/makeuprequests.routes'
-
 import newsRouter from './routes/news.routes'
 import extractRouter from './routes/extract.routes'
 import adminRouter from '~/routes/admin.routes'
