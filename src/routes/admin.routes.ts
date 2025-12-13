@@ -24,7 +24,8 @@ import {
   getCloudinarySignatureController,
   getAllGuestUsersController,
   deleteGuestUserController,
-  getGuestUserEnrollmentsController
+  getGuestUserEnrollmentsController,
+  restoreGuestUserController
 } from '~/controllers/admin.controllers'
 
 const adminRouter = Router()
@@ -72,5 +73,8 @@ adminRouter.get('/users/:userId/enrollments', wrapRequestHandler(getGuestUserEnr
 
 // Xoá người dùng
 adminRouter.delete('/users/:userId', wrapRequestHandler(deleteGuestUserController))
+
+// Khôi phục người dùng đã bị xóa mềm
+adminRouter.patch('/users/:userId/restore', wrapRequestHandler(restoreGuestUserController))
 
 export default adminRouter

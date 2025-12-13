@@ -110,7 +110,8 @@ export const ADMIN_MESSAGES = {
   ASSIGN_CLASS_SUCCESS: 'Assign instructor success',
   GET_ALL_GUEST_USERS_SUCCESS: 'Get all guest success',
   GET_USER_ENROLLMENTS_SUCCESS: 'Get user enrollments success',
-  DELETE_USER_SUCCESS: 'Delete user success'
+  DELETE_USER_SUCCESS: 'Delete user success',
+  RESTORE_USER_SUCCESS: 'Restore user success'
 } as const
 
 export const ATTENDANCE_MESSAGES = {

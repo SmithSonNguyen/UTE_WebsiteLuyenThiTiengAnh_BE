@@ -30,10 +30,11 @@ export interface IUser extends Document {
   otpExpiresAt?: Date | null
   profile: UserProfile
   instructorInfo: InstructorInfo
-  role: 'guest' | 'registered' | 'paid' | 'free' | 'admin' | 'instructor'
+  role: 'guest' | 'admin' | 'instructor'
   purchasedCourses: string[]
   wishList: string[]
   isActive: boolean
+  isDeleted?: boolean
   lastLogin?: Date
   createdAt: Date
   updatedAt: Date
@@ -74,7 +75,7 @@ const UserSchema: Schema<IUser> = new Schema(
 
     role: {
       type: String,
-      enum: ['guest', 'registered', 'paid', 'free', 'admin', 'instructor'],
+      enum: ['guest', 'admin', 'instructor'],
       default: 'guest'
     },
 
@@ -82,22 +83,23 @@ const UserSchema: Schema<IUser> = new Schema(
     wishList: [{ type: String }], // Khóa học muốn mua / gợi ý
 
     isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
     lastLogin: { type: Date, default: null }
   },
   { timestamps: true }
 )
 
-UserSchema.pre<IUser>('save', function (next) {
-  // Chỉ can thiệp vào các roles mà logic 'mua khóa học' áp dụng
-  if (this.role === 'registered' || this.role === 'paid' || this.role === 'free') {
-    if (this.purchasedCourses && this.purchasedCourses.length > 0) {
-      this.role = 'paid'
-    } else {
-      this.role = 'free'
-    }
-  }
-  next()
-})
+// UserSchema.pre<IUser>('save', function (next) {
+//   // Chỉ can thiệp vào các roles mà logic 'mua khóa học' áp dụng
+//   if (this.role === 'registered' || this.role === 'paid' || this.role === 'free') {
+//     if (this.purchasedCourses && this.purchasedCourses.length > 0) {
+//       this.role = 'paid'
+//     } else {
+//       this.role = 'free'
+//     }
+//   }
+//   next()
+// })
 
 // Tạo model
 const User: Model<IUser> = mongoose.model<IUser>('User', UserSchema)

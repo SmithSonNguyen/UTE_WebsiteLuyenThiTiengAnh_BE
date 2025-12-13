@@ -24,7 +24,7 @@ export const loginValidator = validate(
         trim: true,
         custom: {
           options: async (value, { req }) => {
-            const user = await User.findOne({ 'profile.email': value })
+            const user = await User.findOne({ 'profile.email': value, isDeleted: false })
             if (!user) {
               throw new Error(USERS_MESSAGES.EMAIL_OR_PASSWORD_IS_INCORRECT)
             }

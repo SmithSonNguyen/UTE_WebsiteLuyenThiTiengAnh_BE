@@ -129,29 +129,28 @@ class InstructorService {
 
   // Cập nhật thông tin giảng viên
   async updateInstructorProfile(instructorId: string, updateData: any) {
-    const allowedFields = [
-      'name',
-      'phone',
-      'address',
-      'bio',
-      'avatar',
-      'department',
-      'position',
-      'specialization',
-      'experience',
-      'education'
-    ]
+    const allowedProfileFields = ['firstname', 'lastname', 'phone', 'bio', 'avatar', 'linkSocial']
+    const allowedInstructorInfoFields = ['position', 'specialization', 'experience', 'education']
 
-    const filteredData = Object.keys(updateData)
-      .filter((key) => allowedFields.includes(key))
-      .reduce((obj: any, key) => {
-        obj[key] = updateData[key]
-        return obj
-      }, {})
+    const updateObj: any = {}
+
+    // Cập nhật các field trong profile
+    Object.keys(updateData)
+      .filter((key) => allowedProfileFields.includes(key))
+      .forEach((key) => {
+        updateObj[`profile.${key}`] = updateData[key]
+      })
+
+    // Cập nhật các field trong instructorInfo
+    Object.keys(updateData)
+      .filter((key) => allowedInstructorInfoFields.includes(key))
+      .forEach((key) => {
+        updateObj[`instructorInfo.${key}`] = updateData[key]
+      })
 
     const updatedInstructor = await User.findByIdAndUpdate(
       instructorId,
-      { $set: filteredData },
+      { $set: updateObj },
       { new: true, runValidators: true }
     ).select('-password -forgot_password_token -email_verify_token')
 
