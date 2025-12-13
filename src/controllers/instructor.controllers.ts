@@ -38,7 +38,8 @@ export const getInstructorClassesController = async (req: Request, res: Response
 }
 
 interface UpdateInstructorProfileReqBody {
-  name?: string
+  firstname?: string
+  lastname?: string
   phone?: string
   address?: string
   bio?: string

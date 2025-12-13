@@ -242,7 +242,7 @@ export const getCloudinarySignatureController = async (req: Request, res: Respon
  * Lấy tất cả người dùng có role là "guest"
  */
 export const getAllGuestUsersController = async (req: Request, res: Response) => {
-  const { page = 1, limit = 10 } = req.query
+  const { page = 1, limit = 20 } = req.query
 
   const result = await adminService.getAllGuestUsers(Number(page), Number(limit))
 
@@ -278,5 +278,19 @@ export const deleteGuestUserController = async (req: Request, res: Response) => 
 
   return res.status(HTTP_STATUS.OK).json({
     message: ADMIN_MESSAGES.DELETE_USER_SUCCESS
+  })
+}
+
+/**
+ * PATCH /guest/users/:userId/restore
+ * Khôi phục người dùng đã bị xóa mềm
+ */
+export const restoreGuestUserController = async (req: Request, res: Response) => {
+  const { userId } = req.params
+
+  await adminService.restoreGuestUser(userId)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: ADMIN_MESSAGES.RESTORE_USER_SUCCESS
   })
 }

@@ -1175,8 +1175,8 @@ class AdminService {
         })
       }
 
-      // Xoá user
-      await User.findByIdAndDelete(userId)
+      // Xoá mềm user bằng cách chuyển isDeleted thành true
+      await User.findByIdAndUpdate(userId, { isDeleted: true })
 
       // Optional: Xoá các payments pending/failed của user này
       await Payment.deleteMany({
@@ -1189,6 +1189,41 @@ class AdminService {
       }
     } catch (error) {
       console.error('❌ Error in deleteGuestUser:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Khôi phục người dùng đã bị xóa mềm
+   */
+  async restoreGuestUser(userId: string) {
+    try {
+      // Kiểm tra user có tồn tại không
+      const user = await User.findById(userId)
+
+      if (!user) {
+        throw new ErrorWithStatus({
+          message: 'USER_NOT_FOUND',
+          status: HTTP_STATUS.NOT_FOUND
+        })
+      }
+
+      // Kiểm tra user có bị xóa mềm không
+      if (!user.isDeleted) {
+        throw new ErrorWithStatus({
+          message: 'USER_NOT_DELETED',
+          status: HTTP_STATUS.BAD_REQUEST
+        })
+      }
+
+      // Khôi phục user bằng cách chuyển isDeleted thành false
+      await User.findByIdAndUpdate(userId, { isDeleted: false })
+
+      return {
+        message: 'Restored'
+      }
+    } catch (error) {
+      console.error('❌ Error in restoreGuestUser:', error)
       throw error
     }
   }
