@@ -294,3 +294,110 @@ export const restoreGuestUserController = async (req: Request, res: Response) =>
     message: ADMIN_MESSAGES.RESTORE_USER_SUCCESS
   })
 }
+
+/**
+ * GET /admin/vocabularies
+ * Lấy tất cả vocabularies với phân trang và filter
+ * Query params: page, limit, lesson, search
+ */
+export const getAllVocabulariesController = async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1
+  const limit = parseInt(req.query.limit as string) || 20
+  const lesson = req.query.lesson ? parseInt(req.query.lesson as string) : undefined
+  const search = req.query.search as string
+
+  const result = await adminService.getAllVocabularies({ page, limit, lesson, search })
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Get vocabularies successfully',
+    data: result
+  })
+}
+
+/**
+ * GET /admin/vocabularies/lessons
+ * Lấy danh sách lessons có vocabularies
+ */
+export const getVocabularyLessonsController = async (req: Request, res: Response) => {
+  const lessons = await adminService.getVocabularyLessons()
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Get vocabulary lessons successfully',
+    data: lessons
+  })
+}
+
+/**
+ * GET /admin/vocabularies/:vocabularyId
+ * Lấy chi tiết một vocabulary
+ */
+export const getVocabularyByIdController = async (req: Request, res: Response) => {
+  const { vocabularyId } = req.params
+
+  const vocabulary = await adminService.getVocabularyById(vocabularyId)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Get vocabulary successfully',
+    data: vocabulary
+  })
+}
+
+/**
+ * POST /admin/vocabularies
+ * Tạo vocabulary mới
+ */
+export const createVocabularyController = async (req: Request, res: Response) => {
+  const vocabularyData = req.body
+
+  const newVocabulary = await adminService.createVocabulary(vocabularyData)
+
+  return res.status(HTTP_STATUS.CREATED).json({
+    message: 'Create vocabulary successfully',
+    data: newVocabulary
+  })
+}
+
+/**
+ * POST /admin/vocabularies/bulk
+ * Tạo nhiều vocabularies cùng lúc
+ */
+export const createBulkVocabulariesController = async (req: Request, res: Response) => {
+  const { vocabularies } = req.body
+
+  const result = await adminService.createBulkVocabularies(vocabularies)
+
+  return res.status(HTTP_STATUS.CREATED).json({
+    message: 'Create bulk vocabularies successfully',
+    data: result
+  })
+}
+
+/**
+ * PUT /admin/vocabularies/:vocabularyId
+ * Cập nhật vocabulary
+ */
+export const updateVocabularyController = async (req: Request, res: Response) => {
+  const { vocabularyId } = req.params
+  const updateData = req.body
+
+  const updatedVocabulary = await adminService.updateVocabulary(vocabularyId, updateData)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Update vocabulary successfully',
+    data: updatedVocabulary
+  })
+}
+
+/**
+ * DELETE /admin/vocabularies/:vocabularyId
+ * Xóa vocabulary
+ */
+export const deleteVocabularyController = async (req: Request, res: Response) => {
+  const { vocabularyId } = req.params
+
+  await adminService.deleteVocabulary(vocabularyId)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Delete vocabulary successfully'
+  })
+}

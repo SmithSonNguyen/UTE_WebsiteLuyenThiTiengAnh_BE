@@ -4,6 +4,7 @@ import User from '~/models/schemas/User.schema'
 import Course from '~/models/schemas/Course.schema'
 import Enrollment from '~/models/schemas/Enrollment.schema'
 import Class from '~/models/schemas/Class.schema'
+import Vocabulary from '~/models/schemas/Vocabulary.schema'
 import { hashPassword } from '~/utils/crypto'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ErrorWithStatus } from '~/models/Errors'
@@ -1224,6 +1225,232 @@ class AdminService {
       }
     } catch (error) {
       console.error('❌ Error in restoreGuestUser:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Lấy tất cả vocabularies với phân trang và filter
+   */
+  async getAllVocabularies(params: { page: number; limit: number; lesson?: number; search?: string }) {
+    try {
+      const { page, limit, lesson, search } = params
+      const skip = (page - 1) * limit
+
+      // Build filter
+      const filter: any = {}
+      if (lesson) {
+        filter.lesson = lesson
+      }
+      if (search) {
+        filter.$or = [
+          { word: { $regex: search, $options: 'i' } },
+          { explanation: { $regex: search, $options: 'i' } },
+          { typeAndMeaning: { $regex: search, $options: 'i' } }
+        ]
+      }
+
+      // Get vocabularies with pagination
+      const vocabularies = await Vocabulary.find(filter).sort({ lesson: 1, index: 1 }).skip(skip).limit(limit).lean()
+
+      // Get total count
+      const total = await Vocabulary.countDocuments(filter)
+
+      return {
+        vocabularies,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in getAllVocabularies:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Lấy danh sách lessons có vocabularies
+   */
+  async getVocabularyLessons() {
+    try {
+      const lessons = await Vocabulary.aggregate([
+        {
+          $group: {
+            _id: '$lesson',
+            count: { $sum: 1 },
+            minIndex: { $min: '$index' },
+            maxIndex: { $max: '$index' }
+          }
+        },
+        {
+          $sort: { _id: 1 }
+        },
+        {
+          $project: {
+            _id: 0,
+            lesson: '$_id',
+            count: 1,
+            minIndex: 1,
+            maxIndex: 1
+          }
+        }
+      ])
+
+      return lessons
+    } catch (error) {
+      console.error('❌ Error in getVocabularyLessons:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Lấy chi tiết một vocabulary
+   */
+  async getVocabularyById(vocabularyId: string) {
+    try {
+      const vocabulary = await Vocabulary.findById(vocabularyId)
+
+      if (!vocabulary) {
+        throw new ErrorWithStatus({
+          message: 'Vocabulary not found',
+          status: HTTP_STATUS.NOT_FOUND
+        })
+      }
+
+      return vocabulary
+    } catch (error) {
+      console.error('❌ Error in getVocabularyById:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Tạo vocabulary mới
+   */
+  async createVocabulary(vocabularyData: any) {
+    try {
+      // Validate required fields
+      if (!vocabularyData.vocab || !vocabularyData.lesson) {
+        throw new ErrorWithStatus({
+          message: 'Vocab and lesson are required',
+          status: HTTP_STATUS.BAD_REQUEST
+        })
+      }
+
+      // Get the max _id to generate next _id
+      const maxIdVocab = await Vocabulary.findOne().sort({ _id: -1 }).select('_id')
+      const nextId = maxIdVocab ? maxIdVocab._id + 1 : 1
+
+      // Remove index field completely from vocabularyData
+      const { index, ...restData } = vocabularyData
+
+      const newVocabulary = await Vocabulary.create({
+        _id: nextId,
+        ...restData
+      })
+
+      return newVocabulary
+    } catch (error) {
+      console.error('❌ Error in createVocabulary:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Tạo nhiều vocabularies cùng lúc
+   */
+  async createBulkVocabularies(vocabularies: any[]) {
+    try {
+      if (!vocabularies || vocabularies.length === 0) {
+        throw new ErrorWithStatus({
+          message: 'Vocabularies array is required',
+          status: HTTP_STATUS.BAD_REQUEST
+        })
+      }
+
+      // Validate all vocabularies have required fields
+      const invalidVocabs = vocabularies.filter((v) => !v.vocab || !v.lesson)
+      if (invalidVocabs.length > 0) {
+        throw new ErrorWithStatus({
+          message: 'All vocabularies must have vocab and lesson',
+          status: HTTP_STATUS.BAD_REQUEST
+        })
+      }
+
+      // Get the max _id to generate next _id
+      const maxIdVocab = await Vocabulary.findOne().sort({ _id: -1 }).select('_id')
+      let nextId = maxIdVocab ? maxIdVocab._id + 1 : 1
+
+      // Add _id to each vocabulary and remove index field
+      const vocabulariesWithIds = vocabularies.map((vocab) => {
+        const { index, ...restData } = vocab
+        return {
+          _id: nextId++,
+          ...restData
+        }
+      })
+
+      // Create vocabularies
+      const result = await Vocabulary.insertMany(vocabulariesWithIds, { ordered: false })
+
+      return {
+        created: result.length,
+        vocabularies: result
+      }
+    } catch (error) {
+      console.error('❌ Error in createBulkVocabularies:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Cập nhật vocabulary
+   */
+  async updateVocabulary(vocabularyId: string, updateData: any) {
+    try {
+      const vocabulary = await Vocabulary.findById(vocabularyId)
+
+      if (!vocabulary) {
+        throw new ErrorWithStatus({
+          message: 'Vocabulary not found',
+          status: HTTP_STATUS.NOT_FOUND
+        })
+      }
+
+      // Update vocabulary
+      const updatedVocabulary = await Vocabulary.findByIdAndUpdate(vocabularyId, updateData, { new: true })
+
+      return updatedVocabulary
+    } catch (error) {
+      console.error('❌ Error in updateVocabulary:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Xóa vocabulary
+   */
+  async deleteVocabulary(vocabularyId: string) {
+    try {
+      const vocabulary = await Vocabulary.findById(vocabularyId)
+
+      if (!vocabulary) {
+        throw new ErrorWithStatus({
+          message: 'Vocabulary not found',
+          status: HTTP_STATUS.NOT_FOUND
+        })
+      }
+
+      await Vocabulary.findByIdAndDelete(vocabularyId)
+
+      return {
+        message: 'Deleted successfully'
+      }
+    } catch (error) {
+      console.error('❌ Error in deleteVocabulary:', error)
       throw error
     }
   }

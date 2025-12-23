@@ -25,7 +25,14 @@ import {
   getAllGuestUsersController,
   deleteGuestUserController,
   getGuestUserEnrollmentsController,
-  restoreGuestUserController
+  restoreGuestUserController,
+  getAllVocabulariesController,
+  getVocabularyByIdController,
+  createVocabularyController,
+  updateVocabularyController,
+  deleteVocabularyController,
+  getVocabularyLessonsController,
+  createBulkVocabulariesController
 } from '~/controllers/admin.controllers'
 
 const adminRouter = Router()
@@ -76,5 +83,14 @@ adminRouter.delete('/users/:userId', wrapRequestHandler(deleteGuestUserControlle
 
 // Khôi phục người dùng đã bị xóa mềm
 adminRouter.patch('/users/:userId/restore', wrapRequestHandler(restoreGuestUserController))
+
+// Vocabulary management routes
+adminRouter.get('/vocabularies', wrapRequestHandler(getAllVocabulariesController))
+adminRouter.get('/vocabularies/lessons', wrapRequestHandler(getVocabularyLessonsController))
+adminRouter.get('/vocabularies/:vocabularyId', wrapRequestHandler(getVocabularyByIdController))
+adminRouter.post('/vocabularies', wrapRequestHandler(createVocabularyController))
+adminRouter.post('/vocabularies/bulk', wrapRequestHandler(createBulkVocabulariesController))
+adminRouter.put('/vocabularies/:vocabularyId', wrapRequestHandler(updateVocabularyController))
+adminRouter.delete('/vocabularies/:vocabularyId', wrapRequestHandler(deleteVocabularyController))
 
 export default adminRouter
