@@ -21,9 +21,9 @@ export interface ICourse extends Document {
   studentsCount: number
   features: string[]
   courseStructure: {
-    totalSessions: number
-    hoursPerSession: number
-    totalHours: number
+    totalSessions?: number
+    hoursPerSession?: number
+    totalHours?: number
     durationWeeks?: number
     description?: string
   } // Thông tin cho pre-recorded courses
@@ -76,11 +76,10 @@ const courseSchema: Schema<ICourse> = new Schema(
     studentsCount: { type: Number, default: 0 },
     features: { type: [String], default: [] },
     courseStructure: {
-      totalSessions: { type: Number, required: true, min: 1 },
-      hoursPerSession: { type: Number, required: true, min: 0.5 },
+      totalSessions: { type: Number, min: 1 },
+      hoursPerSession: { type: Number, min: 0.5 },
       totalHours: {
         type: Number,
-        required: true,
         min: 1
         // **ĐÃ BỎ VALIDATOR GÂY LỖI**
       },

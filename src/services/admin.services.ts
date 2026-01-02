@@ -752,6 +752,7 @@ class AdminService {
       const newClass = new Class({
         courseId: classData.courseId,
         classId: classData.classId,
+        classCode: classData.classId,
         instructor: classData.instructorId,
         schedule: {
           days: classData.schedule.days,
@@ -891,7 +892,7 @@ class AdminService {
         },
         studentsCount: 0,
         features: courseData.features,
-        courseStructure: courseData.courseStructure,
+        // courseStructure: courseData.courseStructure,
         instructor: courseData.instructor,
         thumbnail: courseData.thumbnail,
         status: 'active',
