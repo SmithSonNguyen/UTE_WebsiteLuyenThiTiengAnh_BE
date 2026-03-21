@@ -32,7 +32,8 @@ import {
   updateVocabularyController,
   deleteVocabularyController,
   getVocabularyLessonsController,
-  createBulkVocabulariesController
+  createBulkVocabulariesController,
+  parseFileController
 } from '~/controllers/admin.controllers'
 
 const adminRouter = Router()
@@ -92,5 +93,8 @@ adminRouter.post('/vocabularies', wrapRequestHandler(createVocabularyController)
 adminRouter.post('/vocabularies/bulk', wrapRequestHandler(createBulkVocabulariesController))
 adminRouter.put('/vocabularies/:vocabularyId', wrapRequestHandler(updateVocabularyController))
 adminRouter.delete('/vocabularies/:vocabularyId', wrapRequestHandler(deleteVocabularyController))
+
+// Test management routes
+adminRouter.post('/test/parse', wrapRequestHandler(parseFileController))
 
 export default adminRouter
