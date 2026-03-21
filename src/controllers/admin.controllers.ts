@@ -401,3 +401,7 @@ export const deleteVocabularyController = async (req: Request, res: Response) =>
     message: 'Delete vocabulary successfully'
   })
 }
+
+// Test Management
+
+export const parseFileController = async (req: Request, res: Response) => {}
