@@ -135,7 +135,7 @@ export const saveUserAnswersController = async (req: Request, res: Response, nex
     )
 
     res.status(HTTP_STATUS.OK).json({
-      message: savedAnswers.isNew ? 'User answers created successfully' : 'User answers updated successfully',
+      message: 'User answers saved successfully',
       result: savedAnswers
     })
   } catch (error) {
@@ -181,6 +181,28 @@ export const getTestResultController = async (req: Request, res: Response, next:
     })
   } catch (error) {
     console.error('Error getting test result:', error)
+    next(error)
+  }
+}
+
+// ✅ GET: Lấy toàn bộ kết quả làm bài của user cho một test
+export const getUserTestAttemptsController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { user_id } = req.decoded_authorization as TokenPayload
+    const { testId } = req.params
+
+    if (!user_id) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Missing userId' })
+    }
+
+    const attempts = await testsService.getUserTestAttempts(user_id, testId)
+
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Get user test attempts successfully',
+      result: attempts
+    })
+  } catch (error) {
+    console.error('Error getting user test attempts:', error)
     next(error)
   }
 }
