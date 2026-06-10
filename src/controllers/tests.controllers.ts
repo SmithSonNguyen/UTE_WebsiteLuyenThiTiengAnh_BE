@@ -98,16 +98,21 @@ export const saveUserAnswersController = async (req: Request, res: Response, nex
       .filter((answer) => {
         // Hỗ trợ cả 2 cấu trúc: {number, answer} và {questionNumber, userAnswer}
         const number = answer.number || answer.questionNumber
-        const answerText = answer.answer || answer.userAnswer
+        const answerText = answer.answer !== undefined ? answer.answer : answer.userAnswer
 
-        return answer && typeof number === 'number' && typeof answerText === 'string' && answerText.trim() !== ''
+        return answer && typeof number === 'number'
       })
       .map((answer) => ({
         // Chuẩn hóa về cấu trúc backend mong đợi
         number: answer.number || answer.questionNumber,
-        answer: answer.answer || answer.userAnswer,
+        answer: answer.answer !== undefined ? answer.answer : answer.userAnswer,
         isCorrect: answer.isCorrect,
-        part: answer.part
+        part: answer.part,
+        questionText: answer.questionText,
+        options: answer.options,
+        imageUrl: answer.imageUrl,
+        mediaUrl: answer.mediaUrl,
+        paragraph: answer.paragraph
       }))
 
     if (validAnswers.length === 0) {
@@ -203,6 +208,20 @@ export const getUserTestAttemptsController = async (req: Request, res: Response,
     })
   } catch (error) {
     console.error('Error getting user test attempts:', error)
+    next(error)
+  }
+}
+
+export const getTestByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { testId } = req.params
+    const test = await testsService.getTestById(testId)
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Get test by ID successfully',
+      result: test
+    })
+  } catch (error) {
+    console.error('Error getting test by ID:', error)
     next(error)
   }
 }

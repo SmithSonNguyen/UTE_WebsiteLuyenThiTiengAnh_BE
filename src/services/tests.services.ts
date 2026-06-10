@@ -225,6 +225,12 @@ const testsService = {
       .lean()
 
     return history
+  },
+
+  getTestById: async (testId: string) => {
+    return await Test.findOne({
+      testId
+    }).lean()
   }
 }
 
