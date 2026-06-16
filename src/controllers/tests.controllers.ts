@@ -112,7 +112,8 @@ export const saveUserAnswersController = async (req: Request, res: Response, nex
         options: answer.options,
         imageUrl: answer.imageUrl,
         mediaUrl: answer.mediaUrl,
-        paragraph: answer.paragraph
+        paragraph: answer.paragraph,
+        explanation: answer.explanation
       }))
 
     if (validAnswers.length === 0) {

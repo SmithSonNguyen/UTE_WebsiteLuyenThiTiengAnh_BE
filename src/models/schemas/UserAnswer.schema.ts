@@ -11,6 +11,7 @@ export interface IUserAnswerItem {
   imageUrl?: string | string[]
   mediaUrl?: string
   paragraph?: string
+  explanation?: string
 }
 
 // Interface cho toàn bộ document user answer
@@ -36,7 +37,8 @@ const UserAnswerItemSchema = new Schema<IUserAnswerItem>({
   options: { type: [String], required: false, default: [] },
   imageUrl: { type: Schema.Types.Mixed, required: false, default: null }, // string hoặc [string]
   mediaUrl: { type: String, required: false, default: null },
-  paragraph: { type: String, required: false, default: null }
+  paragraph: { type: String, required: false, default: null },
+  explanation: { type: String, required: false, default: null }
 })
 
 // Schema chính cho UserAnswer

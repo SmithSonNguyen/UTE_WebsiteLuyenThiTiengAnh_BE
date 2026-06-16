@@ -6,6 +6,7 @@ export interface ISubQuestion {
   questionText: string
   options: string[]
   answer: string
+  explanation?: string
 }
 
 // Định nghĩa cấu trúc của toàn bộ document question
@@ -32,7 +33,8 @@ const SubQuestionSchema = new Schema<ISubQuestion>({
       message: 'Options must be an array with exactly 4 elements'
     }
   },
-  answer: { type: String, required: false, default: '' } // ❗ cho phép rỗng
+  answer: { type: String, required: false, default: '' }, // ❗ cho phép rỗng
+  explanation: { type: String, required: false, default: '' } // ❗ cho phép rỗng
 })
 
 // Schema chính cho collection "questions"
