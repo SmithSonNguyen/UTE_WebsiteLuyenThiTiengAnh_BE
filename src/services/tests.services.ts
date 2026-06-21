@@ -162,26 +162,10 @@ const testsService = {
     if (typeof mark === 'number') payload.mark = mark
     if (typeof rightAnswerNumber === 'number') payload.rightAnswerNumber = rightAnswerNumber
 
-    // 🔍 Kiểm tra xem user đã từng làm bài này chưa
-    const existingAnswer = await UserAnswer.findOne({
-      userId: new Types.ObjectId(userId),
-      testId
-    })
-
-    if (existingAnswer) {
-      // ✅ Cập nhật lại bài cũ thay vì báo lỗi
-      existingAnswer.answers = answers
-      if (typeof mark === 'number') existingAnswer.mark = mark
-      if (typeof rightAnswerNumber === 'number') existingAnswer.rightAnswerNumber = rightAnswerNumber
-      existingAnswer.updatedAt = new Date()
-
-      await existingAnswer.save()
-      return existingAnswer
-    } else {
-      // ✅ Nếu chưa có thì tạo mới
-      const userAnswer = new UserAnswer(payload)
-      return await userAnswer.save()
-    }
+    // ✅ Luôn tạo mới document cho mỗi attempt (không update cái cũ)
+    // Điều này giúp track lịch sử đầy đủ của user
+    const userAnswer = new UserAnswer(payload)
+    return await userAnswer.save()
   },
 
   getAllAnswers: async (testId: string) => {
@@ -217,6 +201,36 @@ const testsService = {
     }))
 
     return result
+  },
+
+  // ✅ Lấy toàn bộ kết quả làm bài của user cho một test cụ thể
+  getUserTestAttempts: async (userId: string, testId: string) => {
+    // Lấy tất cả lần làm của user cho test này
+    const attempts = await UserAnswer.find({
+      userId: new Types.ObjectId(userId),
+      testId
+    })
+      .sort({ createdAt: -1 })
+      .lean()
+
+    return attempts
+  },
+
+  // ✅ Lấy toàn bộ lịch sử làm bài của user (tất cả tests)
+  getUserTestHistory: async (userId: string) => {
+    const history = await UserAnswer.find({
+      userId: new Types.ObjectId(userId)
+    })
+      .sort({ createdAt: -1 })
+      .lean()
+
+    return history
+  },
+
+  getTestById: async (testId: string) => {
+    return await Test.findOne({
+      testId
+    }).lean()
   }
 }
 

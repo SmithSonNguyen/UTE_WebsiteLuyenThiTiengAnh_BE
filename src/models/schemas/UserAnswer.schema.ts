@@ -3,9 +3,15 @@ import mongoose, { Document, Schema, Model } from 'mongoose'
 // Interface cho từng câu trả lời
 export interface IUserAnswerItem {
   number: number
-  answer: string
+  answer: string | null
   isCorrect?: boolean
   part?: number
+  questionText?: string
+  options?: string[]
+  imageUrl?: string | string[]
+  mediaUrl?: string
+  paragraph?: string
+  explanation?: string
 }
 
 // Interface cho toàn bộ document user answer
@@ -21,12 +27,18 @@ export interface IUserAnswer extends Document {
   updatedAt: Date
 }
 
-// Schema cho từng phần tử trong mảng answers
+// Schema cho từng phần tử trong mảy answers
 const UserAnswerItemSchema = new Schema<IUserAnswerItem>({
   number: { type: Number, required: true },
-  answer: { type: String, required: true, trim: true },
+  answer: { type: String, required: false, default: null },
   isCorrect: { type: Boolean, default: null },
-  part: { type: Number, required: false, min: 1, max: 7 }
+  part: { type: Number, required: false, min: 1, max: 7 },
+  questionText: { type: String, required: false, default: null },
+  options: { type: [String], required: false, default: [] },
+  imageUrl: { type: Schema.Types.Mixed, required: false, default: null }, // string hoặc [string]
+  mediaUrl: { type: String, required: false, default: null },
+  paragraph: { type: String, required: false, default: null },
+  explanation: { type: String, required: false, default: null }
 })
 
 // Schema chính cho UserAnswer

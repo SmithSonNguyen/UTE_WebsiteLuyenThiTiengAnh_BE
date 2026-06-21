@@ -20,6 +20,7 @@ import makeupRequestsRouter from './routes/makeuprequests.routes'
 import newsRouter from './routes/news.routes'
 import extractRouter from './routes/extract.routes'
 import adminRouter from '~/routes/admin.routes'
+import aiRouter from '~/routes/ai.routes'
 dotenv.config()
 
 const app = express()
@@ -33,7 +34,8 @@ app.use(
   })
 )
 app.use(cookieParser())
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ limit: '10mb', extended: true }))
 
 // 🔍 DEBUG Middleware
 app.use((req, res, next) => {
@@ -74,6 +76,7 @@ app.use('/payment', paymentRouter)
 app.use('/makeup-requests', makeupRequestsRouter)
 app.use('/news', newsRouter)
 app.use('/extract', extractRouter)
+app.use('/ai', aiRouter)
 
 databaseService.connect()
 
