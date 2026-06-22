@@ -29,6 +29,7 @@ export interface QuestionPayload {
   imageUrl?: string | string[]
   mediaUrl?: string
   paragraph?: string
+  explanation?: string
 }
 
 // ──────────────────────────────────────────────
@@ -60,14 +61,19 @@ function buildPrompt(q: QuestionPayload): string {
       : ''
 
   const paragraphSection = q.paragraph ? `\n📄 Đoạn văn/Script:\n"""\n${q.paragraph}\n"""\n` : ''
+  const explanationSection = q.explanation ? `\n💡 Giải thích đi kèm câu hỏi:\n"""\n${q.explanation}\n """\n` : ''
   const imageSection = q.imageUrl ? '\n🖼️ Câu hỏi có kèm hình ảnh (Part 1 – mô tả ảnh).\n' : ''
   const audioSection = q.mediaUrl ? '\n🎧 Câu hỏi có kèm audio (cần nghe để trả lời).\n' : ''
-
+  console.log('Built prompt:', { questionText, optionsText, userAnswer, correctAnswer, explanation: q.explanation })
   const resultText = q.isCorrect
     ? `✅ Học viên trả lời ĐÚNG (chọn ${userAnswer}).`
     : `❌ Học viên trả lời SAI. Học viên chọn: ${userAnswer} – Đáp án đúng: ${correctAnswer}.`
 
-  const header = `Bạn là giáo viên TOEIC chuyên nghiệp. Hãy giải thích chi tiết câu hỏi TOEIC sau bằng tiếng Việt.\n\n📌 LOẠI CÂU: ${partDesc}`
+  const header = `Bạn là giáo viên TOEIC chuyên nghiệp. Hãy giải thích chi tiết câu hỏi TOEIC sau bằng tiếng Việt.${
+    q.explanation
+      ? ' Ở dưới có đính kèm phần giải thích ngắn từ đề thi (nếu có), hãy dùng nó làm thông tin tham khảo để giải thích sâu hơn, kỹ lưỡng hơn và dễ hiểu hơn cho học viên.'
+      : ''
+  }\n\n📌 LOẠI CÂU: ${partDesc}`
   const questionBlock = `\n📝 Câu hỏi số ${q.number}:\n${questionText}\n\n${optionsText ? `📋 Các lựa chọn:\n${optionsText}\n\n` : ''}📊 Kết quả: ${resultText}\n🔑 Đáp án đúng: ${correctAnswer}`
 
   const structureByPart: Record<number, string> = {
@@ -127,7 +133,7 @@ function buildPrompt(q: QuestionPayload): string {
 2. **Tại sao các đáp án khác sai?**
 3. **Ngữ pháp/từ vựng cần chú ý**`
 
-  return `${header}${imageSection}${audioSection}${paragraphSection}${questionBlock}\n\n${structure}`
+  return `${header}${imageSection}${audioSection}${paragraphSection}${explanationSection}${questionBlock}\n\n${structure}`
 }
 
 // ──────────────────────────────────────────────
