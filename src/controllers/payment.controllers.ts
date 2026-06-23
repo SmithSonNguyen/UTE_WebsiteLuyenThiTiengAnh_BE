@@ -3,6 +3,8 @@ import { Request, Response, NextFunction } from 'express'
 import paymentService from '~/services/payment.services'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { VerifyReturnUrl } from 'vnpay'
+import Payment from '~/models/schemas/Payment.schema'
+import mongoose from 'mongoose'
 
 export const createVNPayPaymentController = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -198,6 +200,45 @@ export const checkCourseAccessController = async (req: Request, res: Response, n
   } catch (error) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({
       message: 'Kiểm tra quyền truy cập thất bại',
+      error: (error as Error).message
+    })
+  }
+}
+
+/**
+ * Kiểm tra user có ít nhất 1 payment status=completed hay không
+ * Dùng để quyết định có mở khoá toàn bộ Speaking Test hay không
+ */
+export const checkHasPurchaseController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.decoded_authorization?.user_id
+
+    if (!userId) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        message: 'Unauthorized'
+      })
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: 'Invalid user ID'
+      })
+    }
+
+    const completedPayment = await Payment.findOne({
+      userId: new mongoose.Types.ObjectId(userId),
+      status: 'completed'
+    }).lean()
+
+    return res.status(HTTP_STATUS.OK).json({
+      message: 'Kiểm tra thành công',
+      result: {
+        hasPurchase: !!completedPayment
+      }
+    })
+  } catch (error) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      message: 'Kiểm tra thất bại',
       error: (error as Error).message
     })
   }

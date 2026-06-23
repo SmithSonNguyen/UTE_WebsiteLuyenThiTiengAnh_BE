@@ -21,6 +21,7 @@ import newsRouter from './routes/news.routes'
 import extractRouter from './routes/extract.routes'
 import adminRouter from '~/routes/admin.routes'
 import aiRouter from '~/routes/ai.routes'
+import speakingRouter from '~/routes/speaking.routes'
 dotenv.config()
 
 const app = express()
@@ -77,6 +78,7 @@ app.use('/makeup-requests', makeupRequestsRouter)
 app.use('/news', newsRouter)
 app.use('/extract', extractRouter)
 app.use('/ai', aiRouter)
+app.use('/speaking', speakingRouter)
 
 databaseService.connect()
 
