@@ -4,7 +4,8 @@ import {
   createVNPayPaymentController,
   vnpayCallbackController,
   getPaymentHistoryController,
-  checkCourseAccessController
+  checkCourseAccessController,
+  checkHasPurchaseController
 } from '~/controllers/payment.controllers'
 import { accessTokenValidator } from '~/middlewares/users.middlewares'
 import { wrapRequestHandler } from '~/utils/handlers'
@@ -36,5 +37,12 @@ paymentRouter.get('/history', accessTokenValidator, wrapRequestHandler(getPaymen
  * Kiểm tra quyền truy cập course
  */
 paymentRouter.get('/access/:courseId', accessTokenValidator, wrapRequestHandler(checkCourseAccessController))
+
+/**
+ * GET /api/payment/has-purchase
+ * Kiểm tra user có ít nhất 1 payment status=completed hay không
+ * Dùng để mở khoá toàn bộ Speaking Test khi user đã mua bất kỳ khóa học nào
+ */
+paymentRouter.get('/has-purchase', accessTokenValidator, wrapRequestHandler(checkHasPurchaseController))
 
 export default paymentRouter
