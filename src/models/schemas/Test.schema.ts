@@ -72,7 +72,8 @@ const TestSchema = new Schema<ITest>(
     },
     description: {
       type: String,
-      required: true,
+      required: false,
+      default: '',
       trim: true,
       maxlength: 500
     },

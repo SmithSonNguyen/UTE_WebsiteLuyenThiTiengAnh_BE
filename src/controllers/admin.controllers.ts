@@ -405,3 +405,178 @@ export const deleteVocabularyController = async (req: Request, res: Response) =>
 // Test Management
 
 export const parseFileController = async (req: Request, res: Response) => {}
+
+/**
+ * GET /admin/tests
+ * Query: page, limit, search
+ */
+export const getAllTestsController = async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1
+  const limit = parseInt(req.query.limit as string) || 20
+  const search = (req.query.search as string) || ''
+
+  const result = await adminService.getAllTests({ page, limit, search })
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Lấy danh sách đề thi thành công',
+    data: result
+  })
+}
+
+/**
+ * GET /admin/tests/:testId
+ */
+export const getTestByIdController = async (req: Request, res: Response) => {
+  const { testId } = req.params
+  const result = await adminService.getTestById(testId)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Lấy chi tiết đề thi thành công',
+    data: result
+  })
+}
+
+/**
+ * PUT /admin/tests/:testId
+ * Body: { title, description, difficulty, category, year, duration, sections }
+ */
+export const updateTestController = async (req: Request, res: Response) => {
+  const { testId } = req.params
+  const updateData = req.body
+
+  const result = await adminService.updateTest(testId, updateData)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Cập nhật đề thi thành công',
+    data: result
+  })
+}
+
+/**
+ * DELETE /admin/tests/:testId
+ */
+export const deleteTestController = async (req: Request, res: Response) => {
+  const { testId } = req.params
+
+  const result = await adminService.deleteTest(testId)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: result.message,
+    data: result
+  })
+}
+
+export const createTestController = async (req: Request, res: Response) => {
+  const { title, sections, difficulty, category, year, duration, description } = req.body
+
+  if (!title) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      message: 'Tên bài thi là bắt buộc'
+    })
+  }
+
+  if (!sections || !Array.isArray(sections) || sections.length === 0) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      message: 'Danh sách phần thi không được để trống'
+    })
+  }
+
+  const result = await adminService.createTest({
+    title,
+    sections,
+    difficulty,
+    category,
+    year,
+    duration,
+    description
+  })
+
+  return res.status(HTTP_STATUS.CREATED).json({
+    message: 'Tạo bài thi thành công',
+    data: result
+  })
+}
+
+// ─── Writing Test Management Controllers ─────────────────────────────────────
+
+/**
+ * GET /admin/writing-tests
+ * Query: page, limit, search
+ */
+export const getAllWritingTestsAdminController = async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1
+  const limit = parseInt(req.query.limit as string) || 20
+  const search = (req.query.search as string) || ''
+
+  const result = await adminService.getAllWritingTests({ page, limit, search })
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Lấy danh sách đề thi writing thành công',
+    data: result
+  })
+}
+
+/**
+ * GET /admin/writing-tests/:writingTestId
+ */
+export const getWritingTestByIdAdminController = async (req: Request, res: Response) => {
+  const { writingTestId } = req.params
+  const result = await adminService.getWritingTestById(writingTestId)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Lấy chi tiết đề thi writing thành công',
+    data: result
+  })
+}
+
+/**
+ * POST /admin/writing-tests
+ */
+export const createWritingTestController = async (req: Request, res: Response) => {
+  const { writingTestId, name, description, duration, difficulty, questions } = req.body
+
+  if (!writingTestId || !name) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'writingTestId và name là bắt buộc' })
+  }
+
+  if (!questions || !Array.isArray(questions) || questions.length === 0) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'questions không được để trống' })
+  }
+
+  const result = await adminService.createWritingTest({ writingTestId, name, description, duration, difficulty, questions })
+
+  return res.status(HTTP_STATUS.CREATED).json({
+    message: 'Tạo đề thi writing thành công',
+    data: result
+  })
+}
+
+/**
+ * PUT /admin/writing-tests/:writingTestId
+ */
+export const updateWritingTestController = async (req: Request, res: Response) => {
+  const { writingTestId } = req.params
+  const updateData = req.body
+
+  const result = await adminService.updateWritingTest(writingTestId, updateData)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: 'Cập nhật đề thi writing thành công',
+    data: result
+  })
+}
+
+/**
+ * DELETE /admin/writing-tests/:writingTestId
+ */
+export const deleteWritingTestController = async (req: Request, res: Response) => {
+  const { writingTestId } = req.params
+
+  const result = await adminService.deleteWritingTest(writingTestId)
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: result.message,
+    data: result
+  })
+}
+

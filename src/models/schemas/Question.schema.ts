@@ -29,8 +29,8 @@ const SubQuestionSchema = new Schema<ISubQuestion>({
     type: [String],
     required: true,
     validate: {
-      validator: (arr: string[]) => Array.isArray(arr) && arr.length === 4,
-      message: 'Options must be an array with exactly 4 elements'
+      validator: (arr: string[]) => Array.isArray(arr) && arr.length >= 3 && arr.length <= 4,
+      message: 'Options must be an array with 3 or 4 elements'
     }
   },
   answer: { type: String, required: false, default: '' }, // ❗ cho phép rỗng
