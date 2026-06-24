@@ -5,12 +5,19 @@ import {
   vnpayCallbackController,
   getPaymentHistoryController,
   checkCourseAccessController,
-  checkHasPurchaseController
+  checkHasPurchaseController,
+  createMomoPaymentController,
+  momoIPNController,
+  momoReturnController
 } from '~/controllers/payment.controllers'
 import { accessTokenValidator } from '~/middlewares/users.middlewares'
 import { wrapRequestHandler } from '~/utils/handlers'
 
 const paymentRouter = Router()
+
+// ============================================================
+// VNPAY ROUTES
+// ============================================================
 
 /**
  * POST /api/payment/vnpay
@@ -24,6 +31,33 @@ paymentRouter.post('/vnpay', accessTokenValidator, wrapRequestHandler(createVNPa
  * VNPay callback endpoint (không cần auth)
  */
 paymentRouter.get('/vnpay/callback', wrapRequestHandler(vnpayCallbackController))
+
+// ============================================================
+// MOMO ROUTES
+// ============================================================
+
+/**
+ * POST /api/payment/momo
+ * Tạo MoMo payment và lấy payUrl
+ * Body: { courseId?, classId?, amount, orderInfo? }
+ */
+paymentRouter.post('/momo', accessTokenValidator, wrapRequestHandler(createMomoPaymentController))
+
+/**
+ * POST /api/payment/momo/ipn
+ * MoMo server gọi vào để xác nhận giao dịch (server-to-server, không cần auth)
+ */
+paymentRouter.post('/momo/ipn', wrapRequestHandler(momoIPNController))
+
+/**
+ * GET /api/payment/momo/return
+ * MoMo redirect user về sau khi thanh toán
+ */
+paymentRouter.get('/momo/return', wrapRequestHandler(momoReturnController))
+
+// ============================================================
+// COMMON ROUTES
+// ============================================================
 
 /**
  * GET /api/payment/history
@@ -41,7 +75,6 @@ paymentRouter.get('/access/:courseId', accessTokenValidator, wrapRequestHandler(
 /**
  * GET /api/payment/has-purchase
  * Kiểm tra user có ít nhất 1 payment status=completed hay không
- * Dùng để mở khoá toàn bộ Speaking Test khi user đã mua bất kỳ khóa học nào
  */
 paymentRouter.get('/has-purchase', accessTokenValidator, wrapRequestHandler(checkHasPurchaseController))
 

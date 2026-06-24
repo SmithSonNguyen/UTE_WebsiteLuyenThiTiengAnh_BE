@@ -23,6 +23,19 @@ export interface IPayment extends Document {
     vnp_SecureHash?: string
   }
 
+  // MoMo specific fields
+  momo?: {
+    orderId: string      // Order ID gửi lên MoMo
+    requestId: string    // Request ID duy nhất
+    transId?: string     // MoMo transaction ID
+    resultCode?: number  // 0 = thành công
+    message?: string     // Thông báo từ MoMo
+    payType?: string     // Loại thanh toán: qr, webApp, credit, napas
+    responseTime?: Date
+    extraData?: string
+    signature?: string   // Signature trả về từ MoMo
+  }
+
   // Status tracking
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'cancelled'
 
@@ -91,6 +104,18 @@ const paymentSchema: Schema<IPayment> = new Schema(
       vnp_SecureHash: { type: String }
     },
 
+    momo: {
+      orderId: { type: String, unique: true, sparse: true },
+      requestId: { type: String },
+      transId: { type: String },
+      resultCode: { type: Number },
+      message: { type: String },
+      payType: { type: String },
+      responseTime: { type: Date },
+      extraData: { type: String },
+      signature: { type: String }
+    },
+
     status: {
       type: String,
       enum: ['pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled'],
@@ -116,6 +141,7 @@ const paymentSchema: Schema<IPayment> = new Schema(
 // Indexes
 paymentSchema.index({ userId: 1, status: 1 })
 paymentSchema.index({ 'vnpay.vnp_TxnRef': 1 })
+paymentSchema.index({ 'momo.orderId': 1 })
 paymentSchema.index({ createdAt: -1 })
 
 // Virtual để check xem payment có hợp lệ không
