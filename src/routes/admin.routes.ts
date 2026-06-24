@@ -33,7 +33,17 @@ import {
   deleteVocabularyController,
   getVocabularyLessonsController,
   createBulkVocabulariesController,
-  parseFileController
+  parseFileController,
+  createTestController,
+  getAllTestsController,
+  getTestByIdController,
+  updateTestController,
+  deleteTestController,
+  getAllWritingTestsAdminController,
+  getWritingTestByIdAdminController,
+  createWritingTestController,
+  updateWritingTestController,
+  deleteWritingTestController
 } from '~/controllers/admin.controllers'
 
 const adminRouter = Router()
@@ -96,5 +106,17 @@ adminRouter.delete('/vocabularies/:vocabularyId', wrapRequestHandler(deleteVocab
 
 // Test management routes
 adminRouter.post('/test/parse', wrapRequestHandler(parseFileController))
+adminRouter.get('/tests', wrapRequestHandler(getAllTestsController))
+adminRouter.post('/tests', wrapRequestHandler(createTestController))
+adminRouter.get('/tests/:testId', wrapRequestHandler(getTestByIdController))
+adminRouter.put('/tests/:testId', wrapRequestHandler(updateTestController))
+adminRouter.delete('/tests/:testId', wrapRequestHandler(deleteTestController))
+
+// Writing Test management routes
+adminRouter.get('/writing-tests', wrapRequestHandler(getAllWritingTestsAdminController))
+adminRouter.post('/writing-tests', wrapRequestHandler(createWritingTestController))
+adminRouter.get('/writing-tests/:writingTestId', wrapRequestHandler(getWritingTestByIdAdminController))
+adminRouter.put('/writing-tests/:writingTestId', wrapRequestHandler(updateWritingTestController))
+adminRouter.delete('/writing-tests/:writingTestId', wrapRequestHandler(deleteWritingTestController))
 
 export default adminRouter

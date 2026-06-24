@@ -5,6 +5,9 @@ import Course from '~/models/schemas/Course.schema'
 import Enrollment from '~/models/schemas/Enrollment.schema'
 import Class from '~/models/schemas/Class.schema'
 import Vocabulary from '~/models/schemas/Vocabulary.schema'
+import Test from '~/models/schemas/Test.schema'
+import Question from '~/models/schemas/Question.schema'
+import WritingTest from '~/models/schemas/WritingTest.schema'
 import { hashPassword } from '~/utils/crypto'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ErrorWithStatus } from '~/models/Errors'
@@ -1455,6 +1458,402 @@ class AdminService {
       throw error
     }
   }
+
+  /**
+   * Lấy danh sách tất cả đề thi (có phân trang + tìm kiếm)
+   */
+  async getAllTests({ page = 1, limit = 20, search = '' }: { page?: number; limit?: number; search?: string } = {}) {
+    try {
+      const query: any = {}
+      if (search) {
+        query.name = { $regex: search, $options: 'i' }
+      }
+
+      const skip = (page - 1) * limit
+      const [tests, total] = await Promise.all([
+        Test.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+        Test.countDocuments(query)
+      ])
+
+      // Đính kèm số câu hỏi thực tế từ collection questions
+      const testsWithQuestionCount = await Promise.all(
+        tests.map(async (test: any) => {
+          const questionDocs = await Question.find({ testId: test.testId }).lean()
+          const actualQuestionCount = questionDocs.reduce(
+            (acc: number, doc: any) => acc + (doc.questions?.length || 0),
+            0
+          )
+          return { ...test, actualQuestionCount, sectionCount: questionDocs.length }
+        })
+      )
+
+      return {
+        tests: testsWithQuestionCount,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in getAllTests:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Lấy chi tiết một đề thi (kèm tất cả câu hỏi)
+   */
+  async getTestById(testId: string) {
+    try {
+      const test = await Test.findOne({ testId }).lean()
+      if (!test) {
+        throw new ErrorWithStatus({ message: 'Không tìm thấy đề thi', status: HTTP_STATUS.NOT_FOUND })
+      }
+      const questions = await Question.find({ testId }).sort({ part: 1 }).lean()
+      return { test, questions }
+    } catch (error) {
+      console.error('❌ Error in getTestById:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Cập nhật đề thi (metadata + toàn bộ sections/câu hỏi)
+   */
+  async updateTest(
+    testId: string,
+    updateData: {
+      title?: string
+      description?: string
+      difficulty?: string
+      category?: string
+      year?: number
+      duration?: number
+      sections?: any[]
+    }
+  ) {
+    try {
+      const test = await Test.findOne({ testId })
+      if (!test) {
+        throw new ErrorWithStatus({ message: 'Không tìm thấy đề thi', status: HTTP_STATUS.NOT_FOUND })
+      }
+
+      const { title, description, difficulty, category, year, duration, sections } = updateData
+
+      // Cập nhật metadata
+      if (title !== undefined) test.name = title
+      if (description !== undefined) test.description = description
+      if (difficulty !== undefined) (test as any).difficulty = difficulty
+      if (category !== undefined) (test as any).category = category
+      if (year !== undefined) (test as any).year = year
+      if (duration !== undefined) test.duration = duration
+
+      // Nếu có cập nhật sections → xóa questions cũ và tạo lại
+      if (sections && Array.isArray(sections)) {
+        await Question.deleteMany({ testId })
+
+        let totalQuestions = 0
+        for (const section of sections) {
+          const formattedQuestions = (section.questions || []).map((q: any) => {
+            let opts = q.options || []
+            if (opts.length < 4) opts = [...opts, ...Array(4 - opts.length).fill('')]
+            else if (opts.length > 4) opts = opts.slice(0, 4)
+            return {
+              number: q.number,
+              questionText: q.questionText || '',
+              options: opts,
+              answer: q.answer || '',
+              explanation: q.explanation || ''
+            }
+          })
+
+          if (formattedQuestions.length === 0) continue
+
+          await Question.create({
+            part: section.part,
+            testId,
+            type: section.part <= 4 ? 'listening' : 'reading',
+            mediaUrl: section.mediaUrl || '',
+            imageUrl: section.imageUrl || [],
+            paragraph: section.paragraph || '',
+            explanation: section.explanation || '',
+            questions: formattedQuestions
+          })
+
+          totalQuestions += formattedQuestions.length
+        }
+
+        test.totalQuestions = totalQuestions
+      }
+
+      await test.save()
+      return test
+    } catch (error) {
+      console.error('❌ Error in updateTest:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Xóa đề thi + tất cả câu hỏi liên quan
+   */
+  async deleteTest(testId: string) {
+    try {
+      const test = await Test.findOne({ testId })
+      if (!test) {
+        throw new ErrorWithStatus({ message: 'Không tìm thấy đề thi', status: HTTP_STATUS.NOT_FOUND })
+      }
+
+      await Promise.all([Test.deleteOne({ testId }), Question.deleteMany({ testId })])
+
+      return { message: 'Xóa đề thi thành công', testId }
+    } catch (error) {
+      console.error('❌ Error in deleteTest:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Tạo bài test mới từ kết quả quét AI
+   */
+  async createTest(testData: {
+    title: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sections: any[]
+    difficulty?: string
+    category?: string
+    year?: number
+    duration?: number
+    description?: string
+  }) {
+    try {
+      const { title, sections, difficulty, category, year, duration, description } = testData
+
+      // Generate a unique testId from title
+      const rawSlug = title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+
+      let testId = rawSlug
+      let count = 0
+      let testExists = await Test.findOne({ testId })
+      while (testExists) {
+        count++
+        testId = `${rawSlug}-${count}`
+        testExists = await Test.findOne({ testId })
+      }
+
+      // Count total questions from sections
+      let totalQuestions = 0
+      for (const section of sections) {
+        if (section.questions && Array.isArray(section.questions)) {
+          totalQuestions += section.questions.length
+        }
+      }
+
+      // Create test document
+      const newTest = new Test({
+        testId,
+        name: title,
+        description: description || 'Bài thi thử TOEIC theo chuẩn ETS.',
+        totalQuestions,
+        maxScore: 990,
+        duration: duration || 120, // default 120 minutes
+        category: category || 'Full Test',
+        year: year || new Date().getFullYear(),
+        difficulty: difficulty || 'intermediate'
+      })
+
+      await newTest.save()
+
+      // Save each section as a Question document
+      const questionDocs = []
+      for (const section of sections) {
+        // Validate options length to be exactly 4
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formattedQuestions = (section.questions || []).map((q: any) => {
+          let opts = q.options || []
+          // Part 2 only needs 3 options (A/B/C)
+          const expectedOpts = section.part === 2 ? 3 : 4
+          if (opts.length < expectedOpts) {
+            opts = [...opts, ...Array(expectedOpts - opts.length).fill('')]
+          } else if (opts.length > expectedOpts) {
+            opts = opts.slice(0, expectedOpts)
+          }
+          return {
+            number: q.number,
+            questionText: q.questionText || '',
+            options: opts,
+            answer: q.answer || '',
+            explanation: q.explanation || ''
+          }
+        })
+
+        const questionDoc = new Question({
+          part: section.part,
+          testId: testId,
+          type: section.part <= 4 ? 'listening' : 'reading',
+          mediaUrl: section.mediaUrl || '',
+          imageUrl: section.imageUrl || [],
+          paragraph: section.paragraph || '',
+          explanation: section.explanation || '',
+          questions: formattedQuestions
+        })
+        await questionDoc.save()
+        questionDocs.push(questionDoc)
+      }
+
+      return {
+        test: newTest,
+        questions: questionDocs
+      }
+    } catch (error) {
+      console.error('❌ Error in createTest:', error)
+      throw error
+    }
+  }
+
+  // ─── Writing Test Management ─────────────────────────────────────────────────
+
+  /**
+   * GET /admin/writing-tests  – Danh sách đề thi writing (có phân trang + search)
+   */
+  async getAllWritingTests({ page = 1, limit = 20, search = '' }: { page?: number; limit?: number; search?: string }) {
+    try {
+      const filter: Record<string, unknown> = {}
+      if (search) {
+        filter.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { writingTestId: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      }
+
+      const skip = (page - 1) * limit
+      const [tests, total] = await Promise.all([
+        WritingTest.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+        WritingTest.countDocuments(filter)
+      ])
+
+      return {
+        tests,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in getAllWritingTests:', error)
+      throw error
+    }
+  }
+
+  /**
+   * GET /admin/writing-tests/:writingTestId
+   */
+  async getWritingTestById(writingTestId: string) {
+    try {
+      const test = await WritingTest.findOne({ writingTestId }).lean()
+      if (!test) throw new ErrorWithStatus({ message: `Không tìm thấy đề thi writing: ${writingTestId}`, status: HTTP_STATUS.NOT_FOUND })
+      return test
+    } catch (error) {
+      console.error('❌ Error in getWritingTestById:', error)
+      throw error
+    }
+  }
+
+  /**
+   * POST /admin/writing-tests  – Tạo đề thi writing mới
+   */
+  async createWritingTest(data: {
+    writingTestId: string
+    name: string
+    description?: string
+    duration?: number
+    difficulty?: 'beginner' | 'intermediate' | 'advanced'
+    questions: Array<{
+      questionNumber: number
+      part: 1 | 2 | 3
+      type: 'photo_description' | 'email_response' | 'opinion_essay'
+      imageUrl?: string
+      emailFrom?: string
+      emailTo?: string
+      emailSubject?: string
+      emailSent?: string
+      emailBody?: string
+      emailDirections?: string
+      essayPrompt?: string
+    }>
+  }) {
+    try {
+      // Kiểm tra trùng ID
+      const existing = await WritingTest.findOne({ writingTestId: data.writingTestId })
+      if (existing) {
+        throw new ErrorWithStatus({ message: `writingTestId "${data.writingTestId}" đã tồn tại`, status: HTTP_STATUS.CONFLICT })
+      }
+
+      const newTest = await WritingTest.create({
+        writingTestId: data.writingTestId,
+        name: data.name,
+        description: data.description || '',
+        duration: data.duration ?? 60,
+        difficulty: data.difficulty ?? 'intermediate',
+        questions: data.questions,
+        completedCount: 0
+      })
+
+      return newTest
+    } catch (error) {
+      console.error('❌ Error in createWritingTest:', error)
+      throw error
+    }
+  }
+
+  /**
+   * PUT /admin/writing-tests/:writingTestId  – Cập nhật đề thi writing
+   */
+  async updateWritingTest(
+    writingTestId: string,
+    data: Partial<{
+      name: string
+      description: string
+      duration: number
+      difficulty: 'beginner' | 'intermediate' | 'advanced'
+      questions: unknown[]
+    }>
+  ) {
+    try {
+      const test = await WritingTest.findOneAndUpdate({ writingTestId }, { $set: data }, { new: true, runValidators: true })
+      if (!test) throw new ErrorWithStatus({ message: `Không tìm thấy đề thi writing: ${writingTestId}`, status: HTTP_STATUS.NOT_FOUND })
+      return test
+    } catch (error) {
+      console.error('❌ Error in updateWritingTest:', error)
+      throw error
+    }
+  }
+
+  /**
+   * DELETE /admin/writing-tests/:writingTestId  – Xóa đề thi writing
+   */
+  async deleteWritingTest(writingTestId: string) {
+    try {
+      const test = await WritingTest.findOneAndDelete({ writingTestId })
+      if (!test) throw new ErrorWithStatus({ message: `Không tìm thấy đề thi writing: ${writingTestId}`, status: HTTP_STATUS.NOT_FOUND })
+      return { message: 'Xóa đề thi writing thành công', deletedId: writingTestId }
+    } catch (error) {
+      console.error('❌ Error in deleteWritingTest:', error)
+      throw error
+    }
+  }
 }
 
 export const adminService = new AdminService()
+
