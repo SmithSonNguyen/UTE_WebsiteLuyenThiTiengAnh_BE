@@ -30,7 +30,7 @@ const port = process.env.PORT
 //middleware: .use() - parse qua dạng json để xử lý các dữ liệu đầu vào
 app.use(
   cors({
-    origin: 'http://localhost:5173', // FE chạy ở đây
+    origin: process.env.CLIENT_URL || 'http://localhost:5173', // FE chạy ở đây
     credentials: true // Nếu bạn dùng cookie, jwt với header
   })
 )
