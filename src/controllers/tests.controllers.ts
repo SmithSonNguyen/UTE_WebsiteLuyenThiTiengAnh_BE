@@ -193,46 +193,27 @@ export const getTestResultController = async (req: Request, res: Response, next:
   }
 }
 
+// ✅ GET: Lấy toàn bộ kết quả làm bài của user cho một test
+export const getUserTestAttemptsController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { user_id } = req.decoded_authorization as TokenPayload
+    const { testId } = req.params
 
+    if (!user_id) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Missing userId' })
+    }
 
-// export const getUserAnswersController = async (req: Request, res: Response, next: NextFunction) => {
-//   try {
-//     const { user_id } = req.decoded_authorization as TokenPayload
-//     const { testId } = req.params
+    const attempts = await testsService.getUserTestAttempts(user_id, testId)
 
-//     if (!user_id) {
-//       return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Missing userId' })
-//     }
-
-//     const attempts = await testsService.getUserTestAttempts(user_id, testId)
-
-//     res.status(HTTP_STATUS.OK).json({
-//       message: 'Get user test attempts successfully',
-//       result: attempts
-//     })
-//   } catch (error) {
-//     console.error('Error getting user test attempts:', error)
-//     const userSubmission = await UserAnswer.findOne({
-//       userId: new Types.ObjectId(user_id),
-//       testId
-//     })
-
-//     if (!userSubmission) {
-//       return res.status(HTTP_STATUS.NOT_FOUND).json({
-//         message: 'No submission found for this user and testId',
-//         result: null
-//       })
-//     }
-
-//     res.status(HTTP_STATUS.OK).json({
-//       message: 'Get user answers successfully',
-//       result: userSubmission
-//     })
-//   } catch (error) {
-//     console.error('Error getting user answers:', error)
-//     next(error)
-//   }
-// }
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Get user test attempts successfully',
+      result: attempts
+    })
+  } catch (error) {
+    console.error('Error getting user test attempts:', error)
+    next(error)
+  }
+}
 
 export const getTestByIdController = async (req: Request, res: Response, next: NextFunction) => {
   try {

@@ -5,7 +5,8 @@ import {
   getFilteredTestsController,
   saveUserAnswersController,
   getTestResultController,
-  getTestByIdController
+  getTestByIdController,
+  getUserTestAttemptsController
 } from '~/controllers/tests.controllers'
 import { accessTokenValidator } from '~/middlewares/users.middlewares'
 import { wrapRequestHandler } from '~/utils/handlers'
@@ -16,9 +17,8 @@ testsRouter.get('/filtered', wrapRequestHandler(getFilteredTestsController))
 testsRouter.get('/:testId', wrapRequestHandler(getTestByIdController))
 testsRouter.get('/:testId/questions', wrapRequestHandler(getAllQuestionsOptimized))
 testsRouter.get('/:testId/result', accessTokenValidator, wrapRequestHandler(getTestResultController))
-// testsRouter.get('/:testId/attempts', accessTokenValidator, wrapRequestHandler(getUserTestAttemptsController))
-// testsRouter.get('/:testId/user-answers', accessTokenValidator, wrapRequestHandler(getUserAnswersController))
+testsRouter.get('/:testId/attempts', accessTokenValidator, wrapRequestHandler(getUserTestAttemptsController))
+//testsRouter.get('/:testId/user-answers', accessTokenValidator, wrapRequestHandler(getUserAnswersController))
 testsRouter.post('/:testId', accessTokenValidator, wrapRequestHandler(saveUserAnswersController))
 
 export default testsRouter
-
