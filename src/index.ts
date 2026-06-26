@@ -26,6 +26,7 @@ import aiRouter from '~/routes/ai.routes'
 import speakingRouter from '~/routes/speaking.routes'
 import writingTestsRouter from '~/routes/writingtests.routes'
 import chatRouter from '~/routes/chat.routes'
+import livekitRoutes from './routes/livekit.route'
 import writingTestsService from '~/services/writingtests.services'
 import { chatService } from '~/services/chat.services'
 import { verifyToken } from '~/utils/jwt'
@@ -101,6 +102,7 @@ app.use('/ai', aiRouter)
 app.use('/speaking', speakingRouter)
 app.use('/writing-tests', writingTestsRouter)
 app.use('/chat', chatRouter)
+app.use('/api/livekit', livekitRoutes)
 
 // ============================================================
 // Socket.IO — Chat realtime
