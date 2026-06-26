@@ -212,3 +212,23 @@ export const enrollmentsService = {
     }
   }
 }
+
+// src/services/enrollment.service.ts
+export const checkUserInClass = async (userId: string, classId: string): Promise<boolean> => {
+  try {
+    if (!userId || !classId) return false
+
+    const enrollment = await Enrollment.findOne({
+      studentId: userId,
+      classId: classId,
+      status: 'enrolled', // Chỉ cho phép status là "enrolled"
+      // Có thể thêm điều kiện paymentStatus nếu cần
+      paymentStatus: 'paid' // Tùy chọn: chỉ cho phép đã thanh toán
+    })
+
+    return !!enrollment // true nếu tìm thấy enrollment hợp lệ
+  } catch (error) {
+    console.error('Error in checkUserInClass:', error)
+    return false
+  }
+}
