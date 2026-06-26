@@ -226,7 +226,28 @@ export const checkUserInClass = async (userId: string, classId: string): Promise
       paymentStatus: 'paid' // Tùy chọn: chỉ cho phép đã thanh toán
     })
 
-    return !!enrollment // true nếu tìm thấy enrollment hợp lệ
+    if (enrollment) {
+      return true
+    }
+
+    // 2. Kiểm tra Makeup Request (buổi học bù)
+    const makeupRequest = await MakeupRequest.findOne({
+      userId: userId,
+      'makeupSlot.classId': classId, // Buổi bù thuộc class này
+      status: { $in: ['scheduled', 'completed'] } // Chỉ cho phép đã lên lịch hoặc đã hoàn thành
+    })
+
+    if (makeupRequest) {
+      return true
+    }
+
+    // 3. Kiểm tra là giảng viên của lớp học
+    const gv = await Class.findById(classId).populate('instructor', '_id')
+    if (gv && gv.instructor && gv.instructor._id.toString() === userId) {
+      return true
+    }
+
+    return false // Không có enrollment lẫn makeup hợp lệ
   } catch (error) {
     console.error('Error in checkUserInClass:', error)
     return false
