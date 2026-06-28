@@ -112,10 +112,15 @@ export const loginController = async (
       maxAge: 30 * 24 * 60 * 60 * 1000
     })
 
+    const user_obj = user.toObject() as any
     res.json({
       message: USERS_MESSAGES.LOGIN_SUCCESS,
       access_token,
-      user: user.profile
+      user: {
+        ...user_obj.profile,
+        role: user_obj.role,
+        level: user_obj.level
+      }
     })
   } catch (error) {
     console.error('Login error:', error)

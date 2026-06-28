@@ -31,6 +31,7 @@ export interface IUser extends Document {
   profile: UserProfile
   instructorInfo: InstructorInfo
   role: 'guest' | 'admin' | 'instructor'
+  level: 'newbie' | 'beginner' | 'intermediate' | 'advanced'
   purchasedCourses: string[]
   wishList: string[]
   isActive: boolean
@@ -77,6 +78,12 @@ const UserSchema: Schema<IUser> = new Schema(
       type: String,
       enum: ['guest', 'admin', 'instructor'],
       default: 'guest'
+    },
+
+    level: {
+      type: String,
+      enum: ['newbie', 'beginner', 'intermediate', 'advanced'],
+      default: 'newbie'
     },
 
     purchasedCourses: [{ type: String }], // Khóa học đã mua

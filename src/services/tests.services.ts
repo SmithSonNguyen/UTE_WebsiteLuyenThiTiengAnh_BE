@@ -2,6 +2,7 @@ import Test from '~/models/schemas/Test.schema'
 import Question from '~/models/schemas/Question.schema'
 import { Types } from 'mongoose'
 import UserAnswer, { IUserAnswerItem } from '~/models/schemas/UserAnswer.schema'
+import User from '~/models/schemas/User.schema'
 
 // Interface cho kết quả trả về từ aggregation
 interface QuestionSection {
@@ -165,7 +166,22 @@ const testsService = {
     // ✅ Luôn tạo mới document cho mỗi attempt (không update cái cũ)
     // Điều này giúp track lịch sử đầy đủ của user
     const userAnswer = new UserAnswer(payload)
-    return await userAnswer.save()
+    const result = await userAnswer.save()
+
+    // Cập nhật trình độ người dùng nếu là bài kiểm tra đầu vào TOEIC Full Test
+    if (testId === 'ETS-2024-01' && typeof mark === 'number') {
+      let level: 'beginner' | 'intermediate' | 'advanced' = 'beginner'
+      if (mark >= 650) {
+        level = 'advanced'
+      } else if (mark >= 450) {
+        level = 'intermediate'
+      } else {
+        level = 'beginner'
+      }
+      await User.findByIdAndUpdate(userId, { $set: { level } })
+    }
+
+    return result
   },
 
   getAllAnswers: async (testId: string) => {
