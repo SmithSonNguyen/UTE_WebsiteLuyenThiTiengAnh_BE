@@ -252,7 +252,7 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
     let effectiveEndDate = originalEndDate
     if (!effectiveEndDate && durationWeeks) {
       effectiveEndDate = new Date(startDate)
-      effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
+      effectiveEndDate.setUTCDate(effectiveEndDate.getUTCDate() + durationWeeks * 7 - 1)
     }
     if (!effectiveEndDate) {
       throw new Error(`Không thể xác định endDate cho class ${cls.classCode}`)
@@ -269,11 +269,12 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
       Saturday: 6
     }
 
-    // Generate sessions
+    // Generate sessions in UTC
     const sessions: any[] = []
     // Tìm ngày đầu tiên của tuần chứa startDate (để làm reference)
     const weekStart = new Date(startDate)
-    weekStart.setDate(startDate.getDate() - startDate.getDay()) // Đặt về Sunday của tuần (JS getDay() Sunday=0)
+    weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay()) // Đặt về Sunday của tuần
+    weekStart.setUTCHours(0, 0, 0, 0)
 
     // Loop qua từng tuần cho đến endDate
     while (weekStart <= effectiveEndDate) {
@@ -281,16 +282,12 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
       days.forEach((day: string, dayIndex: number) => {
         const targetDayOffset = dayIndexMap[day]
         const sessionDate = new Date(weekStart)
-        sessionDate.setDate(weekStart.getDate() + targetDayOffset) // Thêm offset để đến ngày target
+        sessionDate.setUTCDate(weekStart.getUTCDate() + targetDayOffset) // Thêm offset để đến ngày target
 
-        // Chỉ push nếu sessionDate >= startDate và <= endDate
+        // Chỉ push nếu sessionDate >= startDate và <= effectiveEndDate
         if (sessionDate >= startDate && sessionDate <= effectiveEndDate) {
           const dayVN = daysVN[dayIndex]
-          const dateStr = sessionDate.toLocaleDateString('vi-VN', {
-            day: 'numeric',
-            month: '2-digit',
-            year: 'numeric'
-          })
+          const dateStr = `${sessionDate.getUTCDate().toString().padStart(2, '0')}/${(sessionDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${sessionDate.getUTCFullYear()}`
           const dateLabel = `${dayVN} ngày ${dateStr}`
 
           sessions.push({
@@ -304,7 +301,7 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
       })
 
       // Chuyển sang tuần sau
-      weekStart.setDate(weekStart.getDate() + 7)
+      weekStart.setUTCDate(weekStart.getUTCDate() + 7)
     }
 
     // Sắp xếp sessions theo ngày và thêm sessionNumber
@@ -332,6 +329,9 @@ classSchema.statics.getDetailedScheduleForStudent = async function (
       const sessionDate = new Date(session.fullDate.split('/').reverse().join('-'))
       session.showMakeupButton = session.isAbsent && sessionDate < new Date() // Chỉ show nút nếu past và absent
     })
+    if (!originalEndDate && sessions.length > 0) {
+      effectiveEndDate = sessions[sessions.length - 1].date
+    }
     // Format dates cho classInfo
     const startDateStr = startDate.toLocaleDateString('vi-VN')
     const effectiveEndDateStr = effectiveEndDate.toLocaleDateString('vi-VN')
@@ -378,20 +378,25 @@ classSchema.statics.getSessionNumberByDate = async function (
     const { days, startDate, endDate: originalEndDate, durationWeeks } = schedule
     const daysVN = (cls as any).schedule.daysVN // Virtual, không dùng ở đây
 
-    // Tính effectiveEndDate
+    // Tính effectiveEndDate in UTC
     let effectiveEndDate = originalEndDate
     if (!effectiveEndDate && durationWeeks) {
       effectiveEndDate = new Date(startDate)
-      effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
+      effectiveEndDate.setUTCDate(effectiveEndDate.getUTCDate() + durationWeeks * 7 - 1)
     }
     if (!effectiveEndDate) {
       throw new Error('Không thể xác định endDate cho class')
     }
 
-    // Parse sessionDateStr thành Date
+    // Parse sessionDateStr thành Date in UTC
     const [year, month, day] = sessionDateStr.split('-').map(Number)
-    const targetDate = new Date(year, month - 1, day)
-    if (targetDate < startDate || targetDate > effectiveEndDate) {
+    const targetDate = new Date(Date.UTC(year, month - 1, day))
+
+    // Compare date-only parts to prevent timezone offsets
+    const startOnly = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()))
+    const endOnly = new Date(Date.UTC(effectiveEndDate.getUTCFullYear(), effectiveEndDate.getUTCMonth(), effectiveEndDate.getUTCDate()))
+
+    if (targetDate < startOnly || targetDate > endOnly) {
       throw new Error('Ngày không nằm trong lịch lớp học')
     }
 
@@ -406,23 +411,20 @@ classSchema.statics.getSessionNumberByDate = async function (
       Saturday: 6
     }
 
-    // Generate tất cả sessions (giống logic trước, nhưng không cần attendance)
+    // Generate tất cả sessions in UTC
     const sessions: any[] = []
     const weekStart = new Date(startDate)
-    weekStart.setDate(startDate.getDate() - startDate.getDay()) // Sunday của tuần đầu
+    weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay()) // Sunday của tuần đầu
+    weekStart.setUTCHours(0, 0, 0, 0)
 
     while (weekStart <= effectiveEndDate) {
       days.forEach((day: string, dayIndex: number) => {
         const targetDayOffset = dayIndexMap[day]
         const sessionDate = new Date(weekStart)
-        sessionDate.setDate(weekStart.getDate() + targetDayOffset)
+        sessionDate.setUTCDate(weekStart.getUTCDate() + targetDayOffset)
 
         if (sessionDate >= startDate && sessionDate <= effectiveEndDate) {
-          const dateStr = sessionDate.toLocaleDateString('vi-VN', {
-            day: 'numeric',
-            month: '2-digit',
-            year: 'numeric'
-          })
+          const dateStr = `${sessionDate.getUTCDate().toString().padStart(2, '0')}/${(sessionDate.getUTCMonth() + 1).toString().padStart(2, '0')}/${sessionDate.getUTCFullYear()}`
           const sessionDateKey = sessionDate.toISOString().split('T')[0] // 'YYYY-MM-DD'
 
           sessions.push({
@@ -432,7 +434,7 @@ classSchema.statics.getSessionNumberByDate = async function (
           })
         }
       })
-      weekStart.setDate(weekStart.getDate() + 7)
+      weekStart.setUTCDate(weekStart.getUTCDate() + 7)
     }
 
     // Sort theo thời gian và tìm index của targetDate (sessionNumber = index + 1)
@@ -532,11 +534,11 @@ classSchema.statics.getAvailableMakeupSlotsForSession = async function (
         const { schedule } = cls
         const { days, startTime, endTime, startDate, endDate: originalEndDate, durationWeeks } = schedule
 
-        // Compute effectiveEndDate
+        // Compute effectiveEndDate in UTC
         let effectiveEndDate = originalEndDate
         if (!effectiveEndDate && durationWeeks) {
           effectiveEndDate = new Date(startDate)
-          effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
+          effectiveEndDate.setUTCDate(effectiveEndDate.getUTCDate() + durationWeeks * 7 - 1)
         }
         if (!effectiveEndDate) {
           continue // Cannot determine end date

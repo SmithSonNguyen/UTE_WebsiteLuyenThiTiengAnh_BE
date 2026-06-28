@@ -40,12 +40,7 @@ usersRouter.post('/reset-password', ResetPasswordValidation, wrapRequestHandler(
  * Headers: { Authorization: Bearer <access_token> }
  * Only logged-in users can access
  */
-usersRouter.get(
-  '/me',
-  authUser(['registered', 'paid', 'free', 'admin', 'instructor']),
-  accessTokenValidator,
-  wrapRequestHandler(getMeController)
-)
+usersRouter.get('/me', accessTokenValidator, wrapRequestHandler(getMeController))
 
 usersRouter.post('/refresh-token', refreshTokenValidator, wrapRequestHandler(refreshTokenController))
 
