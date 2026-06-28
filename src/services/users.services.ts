@@ -61,11 +61,16 @@ class UsersService {
     }
   }
   async getMe(user_id: string) {
-    const user = await User.findById(user_id, 'profile')
+    const user = await User.findById(user_id, 'profile role level')
     if (!user) {
       throw new Error('User not found')
     }
-    return user.profile
+    const user_obj = user.toObject() as any
+    return {
+      ...user_obj.profile,
+      role: user_obj.role,
+      level: user_obj.level
+    }
   }
 
   async checkEmailExist(email: string) {
@@ -226,13 +231,18 @@ class UsersService {
     }
     if (payload.avatar !== undefined) updateData['profile.avatar'] = payload.avatar
 
-    const updatedUser = await User.findByIdAndUpdate(user_id, { $set: updateData }, { new: true, select: 'profile' })
+    const updatedUser = await User.findByIdAndUpdate(user_id, { $set: updateData }, { new: true, select: 'profile role level' })
 
     if (!updatedUser) {
       throw new Error('User not found')
     }
 
-    return updatedUser.profile
+    const user_obj = updatedUser.toObject() as any
+    return {
+      ...user_obj.profile,
+      role: user_obj.role,
+      level: user_obj.level
+    }
   }
 
   async logout(user_id: string) {
