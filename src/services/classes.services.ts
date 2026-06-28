@@ -141,16 +141,59 @@ class ClassService {
       const durationWeeks = classDetail.schedule.durationWeeks || 0
 
       // Tính ngày kết thúc
-      // Tính ngày kết thúc
       let effectiveEndDate: Date
 
       if (classDetail.schedule.endDate) {
         // Nếu DB đã có endDate → dùng luôn
         effectiveEndDate = new Date(classDetail.schedule.endDate)
+      } else if (durationWeeks && classDetail.schedule.days && classDetail.schedule.days.length > 0) {
+        // Tính endDate chuẩn dựa trên lịch học của lớp (buổi học cuối cùng)
+        const days = classDetail.schedule.days
+        const totalSessions = durationWeeks * days.length
+
+        // Map ngày tiếng Anh sang index (0=Sunday, 1=Monday, ...)
+        const dayIndexMap: Record<string, number> = {
+          Sunday: 0,
+          Monday: 1,
+          Tuesday: 2,
+          Wednesday: 3,
+          Thursday: 4,
+          Friday: 5,
+          Saturday: 6
+        }
+
+        const sessions: Date[] = []
+        const weekStart = new Date(startDate)
+        // Align to Sunday of start week in UTC
+        weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay())
+        weekStart.setUTCHours(0, 0, 0, 0)
+
+        // Generate sessions up to durationWeeks + 2 weeks
+        const maxEndDate = new Date(startDate)
+        maxEndDate.setUTCDate(maxEndDate.getUTCDate() + (durationWeeks + 2) * 7)
+
+        while (weekStart <= maxEndDate && sessions.length < totalSessions) {
+          days.forEach((day: string) => {
+            const targetDayOffset = dayIndexMap[day]
+            const sessionDate = new Date(weekStart)
+            sessionDate.setUTCDate(weekStart.getUTCDate() + targetDayOffset)
+
+            if (sessionDate >= startDate && sessions.length < totalSessions) {
+              sessions.push(sessionDate)
+            }
+          })
+          weekStart.setUTCDate(weekStart.getUTCDate() + 7)
+        }
+
+        if (sessions.length > 0) {
+          effectiveEndDate = sessions[sessions.length - 1]
+        } else {
+          effectiveEndDate = new Date(startDate)
+          effectiveEndDate.setUTCDate(effectiveEndDate.getUTCDate() + durationWeeks * 7 - 1)
+        }
       } else {
-        // Nếu chưa có endDate → tính theo durationWeeks
         effectiveEndDate = new Date(startDate)
-        effectiveEndDate.setDate(startDate.getDate() + durationWeeks * 7 - 1)
+        effectiveEndDate.setUTCDate(effectiveEndDate.getUTCDate() + durationWeeks * 7 - 1)
       }
 
       // Ghi đè vào schedule trước khi return
