@@ -119,3 +119,65 @@ export const getMyEnrolledCoursesVideoController = async (
     next(error)
   }
 }
+
+/**
+ * GET /courses/progress/:courseId
+ * Lấy tiến trình học khoá pre-recorded của user hiện tại
+ */
+export const getCourseProgressController = async (
+  req: Request<ParamsDictionary, any, any>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const courseId = req.params.courseId
+    const userId = req.decoded_authorization?.user_id
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const progress = await coursesService.getCourseProgress(userId.toString(), courseId)
+
+    res.status(200).json({
+      message: 'Get course progress successfully',
+      result: progress
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * POST /courses/progress/:courseId/complete-video
+ * Cập nhật video đã hoàn thành (user trả lời đúng hết câu hỏi)
+ * Body: { videoOrder: number }
+ */
+export const updateCourseProgressController = async (
+  req: Request<ParamsDictionary, any, any>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const courseId = req.params.courseId
+    const userId = req.decoded_authorization?.user_id
+    const { videoOrder } = req.body
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    if (typeof videoOrder !== 'number') {
+      return res.status(400).json({ message: 'videoOrder must be a number' })
+    }
+
+    const result = await coursesService.updateCourseProgress(userId.toString(), courseId, videoOrder)
+
+    res.status(200).json({
+      message: 'Course progress updated successfully',
+      result
+    })
+  } catch (error) {
+    next(error)
+  }
+}

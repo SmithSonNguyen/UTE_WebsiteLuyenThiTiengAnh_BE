@@ -42,6 +42,11 @@ export interface ICourse extends Document {
       url: string
       duration?: string
       order?: number
+      questions?: {
+        questionText: string
+        options: { label: 'A' | 'B' | 'C' | 'D'; text: string }[]
+        correctAnswer: 'A' | 'B' | 'C' | 'D'
+      }[]
     }[]
   }
 
@@ -107,7 +112,19 @@ const courseSchema: Schema<ICourse> = new Schema(
             title: { type: String, required: true },
             url: { type: String, required: true },
             duration: { type: String },
-            order: { type: Number }
+            order: { type: Number },
+            questions: [
+              {
+                questionText: { type: String, required: true },
+                options: [
+                  {
+                    label: { type: String, enum: ['A', 'B', 'C', 'D'], required: true },
+                    text: { type: String, required: true }
+                  }
+                ],
+                correctAnswer: { type: String, enum: ['A', 'B', 'C', 'D'], required: true }
+              }
+            ]
           }
         ]
       },

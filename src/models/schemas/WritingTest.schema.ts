@@ -140,7 +140,6 @@ const WritingTestSchema = new Schema<IWritingTest>(
 )
 
 // ─── Indexes ───────────────────────────────────────────────────────────────────
-WritingTestSchema.index({ writingTestId: 1 })
 WritingTestSchema.index({ difficulty: 1 })
 WritingTestSchema.index({ createdAt: -1 })
 

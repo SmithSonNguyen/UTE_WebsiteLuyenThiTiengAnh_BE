@@ -4,7 +4,9 @@ import {
   getDetailedCoursesController,
   getAllCoursesController,
   getMyEnrolledCoursesController,
-  getMyEnrolledCoursesVideoController
+  getMyEnrolledCoursesVideoController,
+  getCourseProgressController,
+  updateCourseProgressController
 } from '~/controllers/courses.controllers'
 import { accessTokenValidator } from '~/middlewares/users.middlewares'
 import { wrapRequestHandler } from '~/utils/handlers'
@@ -22,4 +24,9 @@ router.get('/', getAllCoursesController)
 router.get('/featured', getFeaturedCoursesController)
 router.get('/my-enrolled-courses', accessTokenValidator, wrapRequestHandler(getMyEnrolledCoursesController))
 router.get('/enrolled/:id', accessTokenValidator, wrapRequestHandler(getMyEnrolledCoursesVideoController))
+
+// Course progress routes (phải đặt trước /:id để tránh conflict)
+router.get('/progress/:courseId', accessTokenValidator, wrapRequestHandler(getCourseProgressController))
+router.post('/progress/:courseId/complete-video', accessTokenValidator, wrapRequestHandler(updateCourseProgressController))
+
 router.get('/:id', getDetailedCoursesController)
