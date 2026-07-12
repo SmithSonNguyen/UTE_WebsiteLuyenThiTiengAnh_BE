@@ -896,7 +896,7 @@ class AdminService {
         },
         studentsCount: 0,
         features: courseData.features,
-        // courseStructure: courseData.courseStructure,
+        courseStructure: courseData.courseStructure,
         instructor: courseData.instructor,
         thumbnail: courseData.thumbnail,
         status: 'active',

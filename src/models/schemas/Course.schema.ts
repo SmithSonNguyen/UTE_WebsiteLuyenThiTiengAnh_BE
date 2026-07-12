@@ -81,14 +81,10 @@ const courseSchema: Schema<ICourse> = new Schema(
     studentsCount: { type: Number, default: 0 },
     features: { type: [String], default: [] },
     courseStructure: {
-      totalSessions: { type: Number, min: 1 },
-      hoursPerSession: { type: Number, min: 0.5 },
-      totalHours: {
-        type: Number,
-        min: 1
-        // **ĐÃ BỎ VALIDATOR GÂY LỖI**
-      },
-      durationWeeks: { type: Number, min: 1 },
+      totalSessions: { type: Number },
+      hoursPerSession: { type: Number },
+      totalHours: { type: Number },
+      durationWeeks: { type: Number },
       description: { type: String }
     }, // Thêm preRecordedContent cho pre-recorded courses
 
