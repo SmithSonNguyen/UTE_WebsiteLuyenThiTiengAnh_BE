@@ -53,7 +53,7 @@ const enrollmentSchema: Schema<IEnrollment> = new Schema(
     makeupChangesCount: { type: Number, default: 3, min: 0, max: 3 },
     progress: {
       sessionsAttended: { type: Number, default: 0, min: 0 },
-      totalSessions: { type: Number, required: true, min: 1 },
+      totalSessions: { type: Number, required: true, min: 0 },
       lastSyncedAt: { type: Date } // Track when attendance was last synced
     },
     attendance: [
@@ -84,7 +84,17 @@ const enrollmentSchema: Schema<IEnrollment> = new Schema(
 enrollmentSchema.index({ studentId: 1, status: 1 })
 enrollmentSchema.index({ classId: 1, status: 1 })
 enrollmentSchema.index({ courseId: 1, status: 1 })
-enrollmentSchema.index({ studentId: 1, classId: 1 }, { unique: true }) // Prevent duplicate enrollments
+// Unique index cho live-meet: chống duplicate enroll cùng lớp học
+enrollmentSchema.index({ studentId: 1, classId: 1 }, { unique: true, sparse: true })
+// Unique index cho pre-recorded: chống duplicate enroll cùng khóa học (không có classId)
+enrollmentSchema.index(
+  { studentId: 1, courseId: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: { classId: { $exists: false } }
+  }
+)
 enrollmentSchema.index({ studentId: 1, 'attendance.sessionDate': 1 }) // Index for attendance queries
 
 // Virtual for completion percentage calculation
