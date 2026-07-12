@@ -42,6 +42,11 @@ export interface ICourse extends Document {
       url: string
       duration?: string
       order?: number
+      questions?: {
+        questionText: string
+        options: { label: 'A' | 'B' | 'C' | 'D'; text: string }[]
+        correctAnswer: 'A' | 'B' | 'C' | 'D'
+      }[]
     }[]
   }
 
@@ -76,14 +81,10 @@ const courseSchema: Schema<ICourse> = new Schema(
     studentsCount: { type: Number, default: 0 },
     features: { type: [String], default: [] },
     courseStructure: {
-      totalSessions: { type: Number, min: 1 },
-      hoursPerSession: { type: Number, min: 0.5 },
-      totalHours: {
-        type: Number,
-        min: 1
-        // **ĐÃ BỎ VALIDATOR GÂY LỖI**
-      },
-      durationWeeks: { type: Number, min: 1 },
+      totalSessions: { type: Number },
+      hoursPerSession: { type: Number },
+      totalHours: { type: Number },
+      durationWeeks: { type: Number },
       description: { type: String }
     }, // Thêm preRecordedContent cho pre-recorded courses
 
@@ -107,7 +108,19 @@ const courseSchema: Schema<ICourse> = new Schema(
             title: { type: String, required: true },
             url: { type: String, required: true },
             duration: { type: String },
-            order: { type: Number }
+            order: { type: Number },
+            questions: [
+              {
+                questionText: { type: String, required: true },
+                options: [
+                  {
+                    label: { type: String, enum: ['A', 'B', 'C', 'D'], required: true },
+                    text: { type: String, required: true }
+                  }
+                ],
+                correctAnswer: { type: String, enum: ['A', 'B', 'C', 'D'], required: true }
+              }
+            ]
           }
         ]
       },

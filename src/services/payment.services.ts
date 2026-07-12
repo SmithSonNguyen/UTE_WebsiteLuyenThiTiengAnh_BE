@@ -130,6 +130,12 @@ class PaymentService {
         throw new Error(errorMsg)
       }
 
+      const actualAmount = course.discountPrice || course.price
+      if (!actualAmount || actualAmount <= 0) {
+        throw new Error('Giá khóa học không hợp lệ')
+      }
+      payload.amount = actualAmount
+
       // 5. Tạo payment record
       const vnp_TxnRef = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}`
 
@@ -576,7 +582,14 @@ class PaymentService {
         throw new Error(errorMsg)
       }
 
-      // 4. Tạo MoMo order ID
+      // 4. Override amount from database to prevent price tampering
+      const actualAmount = course.discountPrice || course.price
+      if (!actualAmount || actualAmount <= 0) {
+        throw new Error('Giá khóa học không hợp lệ')
+      }
+      payload.amount = actualAmount
+
+      // 5. Tạo MoMo order ID
       const orderId = `MOMO${Date.now()}${Math.floor(Math.random() * 1000)}`
       const requestId = orderId // Dùng cùng orderId cho đơn giản
 

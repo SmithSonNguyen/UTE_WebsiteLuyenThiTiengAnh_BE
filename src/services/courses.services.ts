@@ -2,6 +2,7 @@ import Course from '~/models/schemas/Course.schema'
 import Topic from '~/models/schemas/Topic.schema'
 import Lesson from '~/models/schemas/Lesson.schema'
 import { ICourse } from '~/models/schemas/Course.schema'
+import CourseProgress from '~/models/schemas/CourseProgress.schema'
 import mongoose from 'mongoose'
 import { response } from 'express'
 import Enrollment from '~/models/schemas/Enrollment.schema'
@@ -466,6 +467,92 @@ class CoursesService {
     } catch (error) {
       console.error('Error fetching enrolled course:', error)
       throw new Error('Failed to fetch enrolled course')
+    }
+  }
+  // Method lấy tiến trình học khoá pre-recorded của một user
+  async getCourseProgress(userId: string, courseId: string) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+        throw new Error('Invalid user ID or course ID')
+      }
+
+      const progress = await CourseProgress.findOne({
+        userId: new mongoose.Types.ObjectId(userId),
+        courseId: new mongoose.Types.ObjectId(courseId)
+      }).lean()
+
+      // Nếu chưa có record thì trả về mặc định
+      if (!progress) {
+        return {
+          completedVideoOrders: [],
+          lastVideoOrder: 1,
+          completedAt: null
+        }
+      }
+
+      return {
+        completedVideoOrders: progress.completedVideoOrders,
+        lastVideoOrder: progress.lastVideoOrder,
+        completedAt: progress.completedAt || null
+      }
+    } catch (error) {
+      console.error('Error fetching course progress:', error)
+      throw new Error('Failed to fetch course progress')
+    }
+  }
+
+  // Method cập nhật video đã hoàn thành (sau khi làm đúng hết câu hỏi)
+  async updateCourseProgress(userId: string, courseId: string, completedVideoOrder: number) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+        throw new Error('Invalid user ID or course ID')
+      }
+
+      // Lấy thông tin khoá học để biết tổng số video
+      const course = await Course.findById(courseId)
+        .select('preRecordedContent.videoLessons')
+        .lean()
+
+      if (!course) {
+        throw new Error('Course not found')
+      }
+
+      const totalVideos = course.preRecordedContent?.videoLessons?.length || 0
+
+      // Upsert: tạo mới nếu chưa có, cập nhật nếu đã có
+      const progress = await CourseProgress.findOneAndUpdate(
+        {
+          userId: new mongoose.Types.ObjectId(userId),
+          courseId: new mongoose.Types.ObjectId(courseId)
+        },
+        {
+          $addToSet: { completedVideoOrders: completedVideoOrder }, // Không thêm trùng
+          $max: { lastVideoOrder: completedVideoOrder + 1 } // Cập nhật video tiếp theo nên xem
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true
+        }
+      )
+
+      // Kiểm tra nếu đã hoàn thành toàn bộ khoá học
+      if (progress && progress.completedVideoOrders.length >= totalVideos && !progress.completedAt) {
+        await CourseProgress.findByIdAndUpdate(progress._id, {
+          completedAt: new Date()
+        })
+        progress.completedAt = new Date()
+      }
+
+      return {
+        completedVideoOrders: progress?.completedVideoOrders || [],
+        lastVideoOrder: progress?.lastVideoOrder || 1,
+        completedAt: progress?.completedAt || null,
+        isFullyCompleted: (progress?.completedVideoOrders.length || 0) >= totalVideos
+      }
+    } catch (error) {
+      console.error('Error updating course progress:', error)
+      throw new Error('Failed to update course progress')
     }
   }
 }
